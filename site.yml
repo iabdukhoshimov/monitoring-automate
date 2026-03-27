@@ -1,0 +1,21 @@
+---
+- name: Common OS setup on all monitoring hosts
+  import_playbook: playbooks/common.yml
+
+- name: Deploy node_exporter on all monitoring hosts
+  import_playbook: playbooks/node_exporter.yml
+
+- name: Deploy blackbox_exporter
+  import_playbook: playbooks/blackbox_exporter.yml
+
+- name: Deploy Prometheus
+  import_playbook: playbooks/prometheus.yml
+
+- name: Deploy Alertmanager
+  import_playbook: playbooks/alertmanager.yml
+
+- name: Deploy Grafana
+  import_playbook: playbooks/grafana.yml
+
+- name: Configure Grafana via API (datasources + dashboards)
+  import_playbook: playbooks/grafana_api.yml

@@ -1,0 +1,84 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check prometheus binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/prometheus
+      register: prometheus_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: prometheus_binary.stat.exists and prometheus_binary.stat.executable
+        fail_msg: "prometheus binary not found or not executable"
+
+    - name: Check promtool binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/promtool
+      register: prometheus_promtool
+
+    - name: Assert promtool is installed
+      ansible.builtin.assert:
+        that: prometheus_promtool.stat.exists and prometheus_promtool.stat.executable
+        fail_msg: "promtool binary not found"
+
+    - name: Check config file exists
+      ansible.builtin.stat:
+        path: /etc/prometheus/prometheus.yml
+      register: prometheus_config_file
+
+    - name: Assert config file is present
+      ansible.builtin.assert:
+        that: prometheus_config_file.stat.exists
+        fail_msg: "prometheus.yml config not found"
+
+    - name: Check alerting rules exist
+      ansible.builtin.stat:
+        path: /etc/prometheus/rules/alerting_rules.yml
+      register: prometheus_alert_rules
+
+    - name: Assert alerting rules are present
+      ansible.builtin.assert:
+        that: prometheus_alert_rules.stat.exists
+        fail_msg: "alerting_rules.yml not found"
+
+    - name: Check recording rules exist
+      ansible.builtin.stat:
+        path: /etc/prometheus/rules/recording_rules.yml
+      register: prometheus_recording_rules
+
+    - name: Assert recording rules are present
+      ansible.builtin.assert:
+        that: prometheus_recording_rules.stat.exists
+        fail_msg: "recording_rules.yml not found"
+
+    - name: Validate prometheus config with promtool
+      ansible.builtin.command:
+        cmd: /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
+      changed_when: false
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert prometheus service is running
+      ansible.builtin.assert:
+        that:
+          - "'prometheus.service' in ansible_facts.services"
+          - "ansible_facts.services['prometheus.service'].state == 'running'"
+        fail_msg: "prometheus service is not running"
+
+    - name: Assert prometheus port is listening
+      ansible.builtin.wait_for:
+        port: 9090
+        timeout: 30
+
+    - name: Assert prometheus health endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:9090/-/healthy"
+        status_code: 200
+      register: prometheus_health
+      retries: 5
+      delay: 3
+      until: prometheus_health.status == 200

@@ -1,0 +1,49 @@
+---
+grafana_version: "10.4.0"
+grafana_port: 3000
+grafana_checksum: ""
+grafana_admin_user: "admin"
+grafana_domain: "localhost"
+
+grafana_datasources:
+  - name: "Prometheus"
+    type: "prometheus"
+    access: "proxy"
+    isDefault: true
+    # localhost works because Grafana and Prometheus are on the same container
+    url: "http://localhost:{{ prometheus_port }}"
+    jsonData:
+      timeInterval: "{{ prometheus_scrape_interval }}"
+      httpMethod: "POST"
+
+# Auto-import dashboards from grafana.com
+grafana_dashboards:
+  - name: "node-exporter-full"
+    gnet_id: 1860
+    revision: 37
+    uid: "rYdddlPWk"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"
+
+  - name: "blackbox-exporter"
+    gnet_id: 7587
+    revision: 3
+    uid: "xtkCtBkis"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"
+
+  - name: "prometheus-stats"
+    gnet_id: 2
+    revision: 2
+    uid: "000000002"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"

@@ -1,0 +1,17 @@
+---
+blackbox_exporter_version: "0.25.0"
+blackbox_exporter_port: 9115
+blackbox_exporter_user: "blackbox_exporter"
+blackbox_exporter_group: "blackbox_exporter"
+blackbox_exporter_install_dir: "/usr/local/bin"
+blackbox_exporter_config_dir: "/etc/blackbox_exporter"
+# SHA256 checksums per architecture — update when changing blackbox_exporter_version
+# Get from: https://github.com/prometheus/blackbox_exporter/releases
+blackbox_exporter_checksum:
+  amd64: "d2423ea4e6ca69a09867a4e2a18af32e4ee13c98ab3e4d33b1c6eebc81e7a43c"
+  arm64: "46ec5a54a41dc1ea8a8cecee637e117de4807d3b0976482a16596e82e79ac484"
+
+# Probe timeout defaults — override per module if needed
+blackbox_exporter_timeout_http: "10s"
+blackbox_exporter_timeout_tcp: "5s"
+blackbox_exporter_timeout_icmp: "5s"

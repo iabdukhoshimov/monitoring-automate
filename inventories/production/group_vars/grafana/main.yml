@@ -1,0 +1,72 @@
+---
+grafana_version: "10.4.0"
+grafana_port: 3000
+# SHA256 checksum — update when changing grafana_version
+# Get from: https://grafana.com/grafana/download?edition=oss
+grafana_checksum: ""
+grafana_admin_user: "admin"
+grafana_domain: "trust.internal"
+
+# Elasticsearch datasource (existing cluster)
+elasticsearch_url: "http://as-1.internal:9200"
+elasticsearch_index: "logs-*"
+elasticsearch_time_field: "@timestamp"
+
+# Datasources — provisioned via Grafana API
+# URLs built dynamically from inventory groups
+grafana_datasources:
+  - name: "Prometheus"
+    type: "prometheus"
+    access: "proxy"
+    isDefault: true
+    url: "http://{{ groups['prometheus'][0] }}:{{ prometheus_port }}"
+    jsonData:
+      timeInterval: "{{ prometheus_scrape_interval }}"
+      httpMethod: "POST"
+
+  - name: "Elasticsearch"
+    type: "elasticsearch"
+    access: "proxy"
+    isDefault: false
+    url: "{{ elasticsearch_url }}"
+    database: "{{ elasticsearch_index }}"
+    jsonData:
+      esVersion: "8.0.0"
+      timeField: "{{ elasticsearch_time_field }}"
+      logMessageField: "message"
+      logLevelField: "level"
+
+# Dashboards — auto-imported from grafana.com on first deploy.
+# uid: checked first — skipped if already present (idempotent).
+# revision: pin to a tested version; bump deliberately when upgrading.
+# inputs: Grafana datasource variable substitution for this dashboard.
+grafana_dashboards:
+  - name: "node-exporter-full"
+    gnet_id: 1860
+    revision: 37
+    uid: "rYdddlPWk"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"
+
+  - name: "blackbox-exporter"
+    gnet_id: 7587
+    revision: 3
+    uid: "xtkCtBkis"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"
+
+  - name: "prometheus-stats"
+    gnet_id: 2
+    revision: 2
+    uid: "000000002"
+    inputs:
+      - name: "DS_PROMETHEUS"
+        type: datasource
+        pluginId: prometheus
+        value: "Prometheus"

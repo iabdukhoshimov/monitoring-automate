@@ -1,0 +1,10 @@
+---
+# Import community dashboards from grafana.com via the Grafana HTTP API.
+# Idempotent: checks by UID before downloading — won't re-import if already present.
+
+- name: Provision Grafana dashboard
+  ansible.builtin.include_tasks: import_dashboard.yml
+  loop: "{{ grafana_dashboards }}"
+  loop_control:
+    loop_var: dashboard
+    label: "{{ dashboard.name }} (gnet_id={{ dashboard.gnet_id }})"

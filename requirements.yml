@@ -1,0 +1,13 @@
+---
+collections:
+  # community.general: ufw firewall management (Debian/Ubuntu)
+  - name: community.general
+    version: ">=8.0.0"
+
+  # ansible.posix: firewalld management (RedHat/Rocky/CentOS)
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+  # community.docker: Docker connection plugin for local integration testing
+  - name: community.docker
+    version: ">=3.0.0"

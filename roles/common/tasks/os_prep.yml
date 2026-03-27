@@ -1,0 +1,32 @@
+---
+- name: Install common packages (RedHat)
+  ansible.builtin.dnf:
+    name: "{{ common_packages }}"
+    state: present
+    allowerasing: true
+  when: ansible_os_family == "RedHat"
+
+- name: Install common packages (Debian)
+  ansible.builtin.apt:
+    name: "{{ common_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == "Debian"
+
+- name: Get current timezone
+  ansible.builtin.command:
+    cmd: timedatectl show --property=Timezone --value
+  register: common_current_timezone
+  changed_when: false
+
+- name: Set system timezone
+  ansible.builtin.command:
+    cmd: "timedatectl set-timezone {{ common_timezone }}"
+  changed_when: common_current_timezone.stdout != common_timezone
+  notify: restart chrony
+
+- name: Ensure chrony is started and enabled
+  ansible.builtin.service:
+    name: "{{ common_chrony_service }}"
+    state: started
+    enabled: true

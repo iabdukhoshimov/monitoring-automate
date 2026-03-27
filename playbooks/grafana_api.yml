@@ -1,0 +1,23 @@
+---
+- name: Configure Grafana via API
+  hosts: grafana
+  become: false
+  run_once: true
+  tasks:
+    - name: Wait for Grafana API
+      ansible.builtin.import_role:
+        name: grafana
+        tasks_from: api_wait.yml
+      tags: [grafana_api_wait]
+
+    - name: Configure Grafana datasources
+      ansible.builtin.import_role:
+        name: grafana
+        tasks_from: api_datasources.yml
+      tags: [grafana_api_datasources]
+
+    - name: Import Grafana dashboards
+      ansible.builtin.import_role:
+        name: grafana
+        tasks_from: api_dashboards.yml
+      tags: [grafana_api_dashboards]

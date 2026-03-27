@@ -1,0 +1,16 @@
+---
+- name: Import alertmanager install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [alertmanager_install]
+
+- name: Import alertmanager configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [alertmanager_configure]
+
+- name: Import alertmanager service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [alertmanager_service]
+
+- name: Import alertmanager firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [alertmanager_firewall]

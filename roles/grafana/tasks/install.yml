@@ -1,0 +1,105 @@
+---
+- name: Set download architecture
+  ansible.builtin.set_fact:
+    grafana_arch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Create grafana system group
+  ansible.builtin.group:
+    name: "{{ grafana_group }}"
+    system: true
+    state: present
+
+- name: Create grafana system user
+  ansible.builtin.user:
+    name: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create grafana directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: "0755"
+  loop:
+    - "{{ grafana_install_dir }}"
+    - "{{ grafana_config_dir }}"
+    - "{{ grafana_config_dir }}/provisioning"
+    - "{{ grafana_data_dir }}"
+    - "{{ grafana_logs_dir }}"
+    - "{{ grafana_plugins_dir }}"
+
+- name: Check if grafana binary exists
+  ansible.builtin.stat:
+    path: "{{ grafana_install_dir }}/bin/grafana"
+  register: grafana_binary
+
+- name: Check installed grafana version
+  ansible.builtin.command:
+    cmd: "{{ grafana_install_dir }}/bin/grafana --version"
+  register: grafana_installed_version
+  changed_when: false
+  failed_when: false
+  when: grafana_binary.stat.exists
+
+- name: Download grafana archive
+  ansible.builtin.get_url:
+    url: >-
+      https://dl.grafana.com/oss/release/grafana-{{
+      grafana_version }}.linux-{{ grafana_arch }}.tar.gz
+    dest: "/tmp/grafana-{{ grafana_version }}.tar.gz"
+    checksum: "{{ ('sha256:' + grafana_checksum) if grafana_checksum else omit }}"
+    mode: "0644"
+  when: >
+    not grafana_binary.stat.exists or
+    grafana_version not in
+    (grafana_installed_version.stdout | default(''))
+
+- name: Create grafana temp extract dir
+  ansible.builtin.file:
+    path: "/tmp/grafana-{{ grafana_version }}-extract"
+    state: directory
+    mode: "0755"
+  when: >
+    not grafana_binary.stat.exists or
+    grafana_version not in
+    (grafana_installed_version.stdout | default(''))
+
+- name: Extract grafana archive
+  ansible.builtin.unarchive:
+    src: "/tmp/grafana-{{ grafana_version }}.tar.gz"
+    dest: "/tmp/grafana-{{ grafana_version }}-extract"
+    remote_src: true
+    extra_opts: ["--strip-components=1"]
+  when: >
+    not grafana_binary.stat.exists or
+    grafana_version not in
+    (grafana_installed_version.stdout | default(''))
+
+- name: Copy grafana install files
+  ansible.builtin.copy:
+    src: "/tmp/grafana-{{ grafana_version }}-extract/"
+    dest: "{{ grafana_install_dir }}/"
+    owner: "{{ grafana_user }}"
+    group: "{{ grafana_group }}"
+    mode: preserve
+    remote_src: true
+  notify: restart grafana
+  when: >
+    not grafana_binary.stat.exists or
+    grafana_version not in
+    (grafana_installed_version.stdout | default(''))
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/grafana-{{ grafana_version }}.tar.gz"
+    state: absent
+
+- name: Clean up temp extract dir
+  ansible.builtin.file:
+    path: "/tmp/grafana-{{ grafana_version }}-extract"
+    state: absent

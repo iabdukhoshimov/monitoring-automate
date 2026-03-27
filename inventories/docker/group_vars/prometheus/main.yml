@@ -1,0 +1,28 @@
+---
+prometheus_version: "2.51.0"
+prometheus_retention: "7d"
+prometheus_scrape_interval: "15s"
+prometheus_evaluation_interval: "15s"
+prometheus_cluster_name: "docker-test"
+
+prometheus_checksum:
+  amd64: "e9b1e1b5a01f3ee37cb4abe913a6db17a61f5b1acee5e4d8f7ed9e7a50f6ff61"
+  arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
+
+# Probe the local services running on the same container
+prometheus_blackbox_http_targets:
+  - "http://localhost:9090/-/healthy"
+  - "http://localhost:9093/-/healthy"
+  - "http://localhost:3000/api/health"
+
+prometheus_blackbox_tcp_targets:
+  - "localhost:9090"
+  - "localhost:9093"
+
+prometheus_blackbox_icmp_targets: []
+
+# Cross-role port vars used by prometheus.yml.j2 template
+alertmanager_port: 9093
+grafana_port: 3000
+blackbox_exporter_port: 9115
+node_exporter_port: 9100

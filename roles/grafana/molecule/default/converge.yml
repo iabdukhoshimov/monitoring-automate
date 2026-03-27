@@ -1,0 +1,33 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # IMPORTANT: grafana_checksum is a placeholder in group_vars.
+    # Set it to the real SHA256 from https://grafana.com/grafana/download?edition=oss
+    # before running molecule. Empty string skips checksum verification for CI.
+    grafana_checksum: ""
+    # Dummy credentials — real values live in Ansible Vault
+    grafana_admin_password: "TestAdmin123!"
+    grafana_secret_key: "TestSecretKey32CharsMinimum1234!"
+    grafana_domain: "localhost"
+    prometheus_port: 9090
+    prometheus_scrape_interval: "15s"
+    elasticsearch_url: "http://localhost:9200"
+    elasticsearch_index: "logs-*"
+    elasticsearch_time_field: "@timestamp"
+    # Simple datasource pointing to localhost — groups['prometheus'][0] resolves
+    # to this instance since it is in the prometheus group in molecule.yml
+    grafana_datasources:
+      - name: "Prometheus"
+        type: "prometheus"
+        access: "proxy"
+        isDefault: true
+        url: "http://{{ groups['prometheus'][0] }}:{{ prometheus_port }}"
+        jsonData:
+          timeInterval: "{{ prometheus_scrape_interval }}"
+          httpMethod: "POST"
+    # Skip external dashboard downloads in tests
+    grafana_dashboards: []
+  roles:
+    - role: grafana

@@ -1,0 +1,317 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+groups:
+
+  - name: instance_health
+    rules:
+
+      - alert: InstanceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ '{{' }} $labels.instance {{ '}}' }} is down"
+          description: >-
+            {{ '{{' }} $labels.instance {{ '}}' }} of job
+            {{ '{{' }} $labels.job {{ '}}' }} has been down for more than 2 minutes.
+
+      - alert: HighCpuUsage
+        expr: instance:node_cpu_utilization:rate5m > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            CPU usage is {{ '{{' }} $value | printf "%.1f" {{ '}}' }}%
+            on {{ '{{' }} $labels.instance {{ '}}' }} for more than 5 minutes.
+
+      - alert: HighMemoryUsage
+        expr: instance:node_memory_utilization:ratio * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Memory usage is {{ '{{' }} $value | printf "%.1f" {{ '}}' }}%
+            on {{ '{{' }} $labels.instance {{ '}}' }} for more than 5 minutes.
+
+      - alert: DiskSpaceLow
+        expr: >
+          (node_filesystem_avail_bytes{fstype!="tmpfs"}
+          / node_filesystem_size_bytes{fstype!="tmpfs"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Disk space is below 15% on {{ '{{' }} $labels.instance {{ '}}' }}.
+            Available: {{ '{{' }} $value | printf "%.1f" {{ '}}' }}%.
+
+      - alert: DiskSpaceCritical
+        expr: >
+          (node_filesystem_avail_bytes{fstype!="tmpfs"}
+          / node_filesystem_size_bytes{fstype!="tmpfs"}) * 100 < 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Disk space is below 5% on {{ '{{' }} $labels.instance {{ '}}' }}.
+            Available: {{ '{{' }} $value | printf "%.1f" {{ '}}' }}%.
+
+  - name: node_resources
+    rules:
+
+      # Load average relative to CPU count — fires when system is overloaded
+      - alert: NodeHighLoadAverage
+        expr: instance:node_load1_per_cpu:ratio > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High load average on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Load average is {{ '{{' }} $value | printf "%.2f" {{ '}}' }}x the CPU count on
+            {{ '{{' }} $labels.instance {{ '}}' }} for more than 10 minutes.
+
+      # Swap — skipped automatically when swap is disabled (SwapTotal == 0)
+      - alert: NodeSwapUsageHigh
+        expr: >
+          node_memory_SwapTotal_bytes > 0
+          and
+          (node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes)
+          / node_memory_SwapTotal_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High swap usage on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Swap usage is {{ '{{' }} $value | printf "%.1f" {{ '}}' }}% on
+            {{ '{{' }} $labels.instance {{ '}}' }}. High swap usage indicates memory pressure.
+
+      # File descriptors — exhaustion causes services to stop accepting connections
+      - alert: NodeFileDescriptorExhaustion
+        expr: instance:node_filefd_utilization:ratio * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "File descriptors nearly exhausted on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            {{ '{{' }} $value | printf "%.1f" {{ '}}' }}% of file descriptors are in use on
+            {{ '{{' }} $labels.instance {{ '}}' }}. Exhaustion will cause services to fail.
+
+      # OOM kill — no `for` delay, fire immediately
+      - alert: NodeOOMKillDetected
+        expr: increase(node_vmstat_oom_kill[5m]) > 0
+        labels:
+          severity: critical
+        annotations:
+          summary: "OOM kill detected on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            The OOM killer was triggered {{ '{{' }} $value | printf "%.0f" {{ '}}' }} time(s)
+            in the last 5 minutes on {{ '{{' }} $labels.instance {{ '}}' }}.
+
+      # Disk I/O — filter device mapper and optical drives
+      - alert: NodeDiskIOSaturation
+        expr: >
+          rate(node_disk_io_time_seconds_total{device!~"dm-.*|sr.*"}[5m]) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk I/O saturated on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Disk {{ '{{' }} $labels.device {{ '}}' }} on {{ '{{' }} $labels.instance {{ '}}' }}
+            is {{ '{{' }} $value | humanizePercentage {{ '}}' }} utilized.
+            I/O latency will increase.
+
+      # Network errors — rx + tx combined, exclude loopback
+      - alert: NodeNetworkErrors
+        expr: >
+          sum by(instance, device) (
+            rate(node_network_receive_errs_total{device!="lo"}[5m]) +
+            rate(node_network_transmit_errs_total{device!="lo"}[5m])
+          ) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Network errors on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Interface {{ '{{' }} $labels.device {{ '}}' }} on
+            {{ '{{' }} $labels.instance {{ '}}' }} has
+            {{ '{{' }} $value | printf "%.2f" {{ '}}' }} errors/s (rx + tx).
+
+      # Clock skew — > 50ms offset breaks distributed systems and metric timestamps
+      - alert: NodeClockSkewDetected
+        expr: abs(node_timex_offset_seconds) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Clock skew detected on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            NTP offset is {{ '{{' }} $value | printf "%.3f" {{ '}}' }}s on
+            {{ '{{' }} $labels.instance {{ '}}' }}.
+            Skew > 50ms can corrupt metric timestamps and break distributed systems.
+
+      # Systemd failed services
+      - alert: NodeSystemdServiceFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Systemd service failed on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Service {{ '{{' }} $labels.name {{ '}}' }} is in a failed state on
+            {{ '{{' }} $labels.instance {{ '}}' }}.
+            Run: systemctl status {{ '{{' }} $labels.name {{ '}}' }}
+
+  - name: blackbox_probes
+    rules:
+
+      - alert: ProbeFailed
+        expr: probe_success == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Probe failed for {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Blackbox probe has been failing for {{ '{{' }} $labels.instance {{ '}}' }}
+            (job={{ '{{' }} $labels.job {{ '}}' }}) for more than 2 minutes.
+
+      - alert: ProbeSlowHttp
+        expr: probe_http_duration_seconds > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow HTTP probe for {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            HTTP probe for {{ '{{' }} $labels.instance {{ '}}' }} is responding in
+            {{ '{{' }} $value | printf "%.2f" {{ '}}' }}s (threshold: 2s).
+
+      - alert: ProbeHttpStatusCode
+        expr: probe_http_status_code > 0 and (probe_http_status_code <= 199 or probe_http_status_code >= 400)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Bad HTTP status for {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            HTTP probe for {{ '{{' }} $labels.instance {{ '}}' }} returned status
+            {{ '{{' }} $value {{ '}}' }}.
+
+      - alert: ProbeSslCertExpiringSoon
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 14
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "SSL cert expiring in < 14 days for {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            SSL certificate for {{ '{{' }} $labels.instance {{ '}}' }} expires in
+            {{ '{{' }} $value | humanizeDuration {{ '}}' }}.
+
+      - alert: ProbeSslCertExpiryImminent
+        expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 3
+        for: 1h
+        labels:
+          severity: critical
+        annotations:
+          summary: "SSL cert expiring in < 3 days for {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            SSL certificate for {{ '{{' }} $labels.instance {{ '}}' }} expires in
+            {{ '{{' }} $value | humanizeDuration {{ '}}' }}. Immediate renewal required.
+
+  - name: prometheus_health
+    rules:
+
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "Alerting pipeline is operational"
+          description: >-
+            This alert always fires. It confirms Prometheus is alive and alerts
+            are reaching Alertmanager. If this alert stops firing, the alerting
+            pipeline is broken.
+
+      - alert: PrometheusConfigReloadFailed
+        expr: prometheus_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus config reload failed on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Prometheus configuration reload has failed. Check config syntax."
+
+      - alert: AlertmanagerConfigReloadFailed
+        expr: alertmanager_config_last_reload_successful == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager config reload failed on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: "Alertmanager configuration reload has failed. Check config syntax."
+
+      # Rule evaluation failures — alerts may silently stop firing
+      - alert: PrometheusRuleEvaluationFailures
+        expr: rate(prometheus_rule_evaluation_failures_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Prometheus rule evaluation failing on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Prometheus is failing to evaluate rules at
+            {{ '{{' }} $value | printf "%.2f" {{ '}}' }} failures/s on
+            {{ '{{' }} $labels.instance {{ '}}' }}. Alerts may not fire correctly.
+
+      # TSDB compaction failures — disk usage grows unbounded
+      - alert: PrometheusTSDBCompactionsFailing
+        expr: rate(prometheus_tsdb_compactions_failed_total[3h]) > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus TSDB compactions failing on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Prometheus TSDB compaction is failing on {{ '{{' }} $labels.instance {{ '}}' }}.
+            Disk usage will grow faster than expected.
+
+      # Alertmanager notification failures — alerts not reaching their destination
+      - alert: AlertmanagerNotificationsFailing
+        expr: rate(alertmanager_notifications_failed_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Alertmanager notifications failing on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Alertmanager is failing to send {{ '{{' }} $labels.integration {{ '}}' }}
+            notifications at {{ '{{' }} $value | printf "%.2f" {{ '}}' }} failures/s
+            on {{ '{{' }} $labels.instance {{ '}}' }}.
+
+      # Slow scrapes — target may be overloaded or misconfigured
+      - alert: PrometheusTargetScrapeSlow
+        expr: prometheus_target_scrape_duration_seconds > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow scrape for {{ '{{' }} $labels.job {{ '}}' }} on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Scraping {{ '{{' }} $labels.job {{ '}}' }} is taking
+            {{ '{{' }} $value | printf "%.1f" {{ '}}' }}s (threshold: 10s).
+            Consider increasing scrape_timeout or investigating target performance.

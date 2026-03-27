@@ -1,0 +1,6 @@
+---
+- name: Deploy blackbox_exporter
+  hosts: blackbox_exporter
+  become: true
+  roles:
+    - role: blackbox_exporter

@@ -1,0 +1,64 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check alertmanager binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/alertmanager
+      register: alertmanager_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: alertmanager_binary.stat.exists and alertmanager_binary.stat.executable
+        fail_msg: "alertmanager binary not found or not executable"
+
+    - name: Check amtool binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/amtool
+      register: alertmanager_amtool
+
+    - name: Assert amtool is installed
+      ansible.builtin.assert:
+        that: alertmanager_amtool.stat.exists and alertmanager_amtool.stat.executable
+        fail_msg: "amtool binary not found"
+
+    - name: Check config file exists
+      ansible.builtin.stat:
+        path: /etc/alertmanager/alertmanager.yml
+      register: alertmanager_config_file
+
+    - name: Assert config file is present
+      ansible.builtin.assert:
+        that: alertmanager_config_file.stat.exists
+        fail_msg: "alertmanager.yml config not found"
+
+    - name: Validate alertmanager config with amtool
+      ansible.builtin.command:
+        cmd: /usr/local/bin/amtool check-config /etc/alertmanager/alertmanager.yml
+      changed_when: false
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert alertmanager service is running
+      ansible.builtin.assert:
+        that:
+          - "'alertmanager.service' in ansible_facts.services"
+          - "ansible_facts.services['alertmanager.service'].state == 'running'"
+        fail_msg: "alertmanager service is not running"
+
+    - name: Assert alertmanager port is listening
+      ansible.builtin.wait_for:
+        port: 9093
+        timeout: 30
+
+    - name: Assert alertmanager health endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:9093/-/healthy"
+        status_code: 200
+      register: alertmanager_health
+      retries: 5
+      delay: 3
+      until: alertmanager_health.status == 200

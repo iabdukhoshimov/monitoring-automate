@@ -1,0 +1,28 @@
+---
+grafana_version: "10.4.0"
+grafana_port: 3000
+
+# system
+grafana_user: "grafana"
+grafana_group: "grafana"
+grafana_install_dir: "/usr/share/grafana"
+grafana_config_dir: "/etc/grafana"
+grafana_data_dir: "/var/lib/grafana"
+grafana_logs_dir: "/var/log/grafana"
+grafana_plugins_dir: "/var/lib/grafana/plugins"
+
+# server
+grafana_domain: "localhost"
+grafana_root_url: "%(protocol)s://%(domain)s:%(http_port)s/"
+
+# auth
+grafana_admin_user: "admin"
+
+# logging
+grafana_log_mode: "console"
+grafana_log_level: "info"
+
+# dashboards — list is defined in group_vars/grafana/main.yml
+# uid: stable identifier used for idempotency check (skip if already present)
+# revision: pin to a specific tested version; bump deliberately
+grafana_dashboards: []

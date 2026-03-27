@@ -1,0 +1,33 @@
+---
+prometheus_version: "2.51.0"
+prometheus_port: 9090
+# Explicit cross-role dependency: must match node_exporter_port in node_exporter role
+node_exporter_port: 9100
+prometheus_retention: "30d"
+prometheus_scrape_interval: "15s"
+prometheus_evaluation_interval: "15s"
+prometheus_cluster_name: "production"
+
+# SHA256 checksums per architecture — update when changing prometheus_version
+# Get from: https://github.com/prometheus/prometheus/releases
+prometheus_checksum:
+  amd64: "e9b1e1b5a01f3ee37cb4abe913a6db17a61f5b1acee5e4d8f7ed9e7a50f6ff61"
+  arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
+
+# Blackbox probe targets — add/remove endpoints here without redeployment
+# These are scraped via the blackbox_exporter on the blackbox_exporter host.
+prometheus_blackbox_http_targets:
+  - "https://grafana.internal:3000"
+  - "http://prometheus.internal:9090/-/healthy"
+  - "http://alertmanager.internal:9093/-/healthy"
+
+prometheus_blackbox_tcp_targets:
+  - "prometheus.internal:9090"
+  - "alertmanager.internal:9093"
+  - "grafana.internal:3000"
+
+prometheus_blackbox_icmp_targets:
+  - "prometheus.internal"
+  - "alertmanager.internal"
+  - "grafana.internal"
+  - "blackbox.internal"

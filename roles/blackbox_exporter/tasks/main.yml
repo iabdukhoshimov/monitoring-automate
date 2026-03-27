@@ -1,0 +1,12 @@
+---
+- name: Import blackbox_exporter install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [blackbox_exporter_install]
+
+- name: Import blackbox_exporter configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [blackbox_exporter_configure]
+
+- name: Import blackbox_exporter firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [blackbox_exporter_firewall]

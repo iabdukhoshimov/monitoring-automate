@@ -1,0 +1,15 @@
+---
+- name: Allow blackbox_exporter port through firewalld (RedHat/Rocky/CentOS)
+  ansible.posix.firewalld:
+    port: "{{ blackbox_exporter_port }}/tcp"
+    permanent: true
+    state: enabled
+    immediate: true
+  when: ansible_os_family == "RedHat"
+
+- name: Allow blackbox_exporter port through ufw (Debian/Ubuntu)
+  community.general.ufw:
+    rule: allow
+    port: "{{ blackbox_exporter_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"

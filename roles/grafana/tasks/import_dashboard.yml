@@ -1,0 +1,42 @@
+---
+# Helper task — called per-dashboard by api_dashboards.yml via include_tasks.
+# Uses loop_var 'dashboard' (not 'item') to avoid name collisions.
+
+- name: "Check if dashboard already exists: {{ dashboard.name }}"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/api/dashboards/uid/{{ dashboard.uid }}"
+    method: GET
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200, 404]
+  register: grafana_dash_check
+  changed_when: false
+
+- name: "Download dashboard from Grafana.com: {{ dashboard.name }}"
+  ansible.builtin.uri:
+    url: >-
+      https://grafana.com/api/dashboards/{{ dashboard.gnet_id
+      }}/revisions/{{ dashboard.revision }}/download
+    method: GET
+    return_content: true
+    status_code: 200
+  register: grafana_dash_json
+  changed_when: false
+  when: grafana_dash_check.status == 404
+
+- name: "Import dashboard via Grafana API: {{ dashboard.name }}"
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/api/dashboards/import"
+    method: POST
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body:
+      dashboard: "{{ grafana_dash_json.content | from_json }}"
+      overwrite: true
+      folderUID: "general"
+      inputs: "{{ dashboard.inputs }}"
+    status_code: 200
+  when: grafana_dash_check.status == 404

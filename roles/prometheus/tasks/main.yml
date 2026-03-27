@@ -1,0 +1,16 @@
+---
+- name: Import prometheus install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [prometheus_install]
+
+- name: Import prometheus configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [prometheus_configure]
+
+- name: Import prometheus service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [prometheus_service]
+
+- name: Import prometheus firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [prometheus_firewall]

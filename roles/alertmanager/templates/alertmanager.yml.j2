@@ -1,0 +1,20 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "event-service"
+  group_by:
+    - alertname
+    - instance
+    - severity
+  group_wait: {{ alertmanager_group_wait }}
+  group_interval: {{ alertmanager_group_interval }}
+  repeat_interval: {{ alertmanager_repeat_interval }}
+
+receivers:
+  - name: "event-service"
+    webhook_configs:
+      - url: "{{ alertmanager_event_service_url }}/webhook"
+        send_resolved: true

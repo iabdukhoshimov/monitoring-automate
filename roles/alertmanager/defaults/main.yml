@@ -1,0 +1,22 @@
+---
+alertmanager_version: "0.27.0"
+alertmanager_port: 9093
+
+# system
+alertmanager_user: "alertmanager"
+alertmanager_group: "alertmanager"
+alertmanager_install_dir: "/usr/local/bin"
+alertmanager_config_dir: "/etc/alertmanager"
+alertmanager_data_dir: "/var/lib/alertmanager"
+
+# routing timings
+alertmanager_group_wait: "30s"
+alertmanager_group_interval: "5m"
+alertmanager_repeat_interval: "4h"
+
+# Checksums — must be set via group_vars; no safe defaults exist
+# Get from: https://github.com/prometheus/alertmanager/releases
+alertmanager_checksum: {}
+
+# event service
+alertmanager_event_service_url: "http://localhost:8080"

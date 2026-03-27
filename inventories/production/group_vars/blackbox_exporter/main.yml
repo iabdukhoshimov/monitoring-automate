@@ -1,0 +1,6 @@
+---
+blackbox_exporter_version: "0.25.0"
+blackbox_exporter_port: 9115
+# SHA256 checksum — update when changing blackbox_exporter_version
+# Get from: https://github.com/prometheus/blackbox_exporter/releases
+blackbox_exporter_checksum: "d2423ea4e6ca69a09867a4e2a18af32e4ee13c98ab3e4d33b1c6eebc81e7a43c"

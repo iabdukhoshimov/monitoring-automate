@@ -1,0 +1,222 @@
+# Local full-stack dev environment
+# Mirrors what Ansible deploys in production.
+#
+# Usage:
+#   cd docker/
+#   cp .env.example .env          # edit EVENT_SERVICE_PATH if needed
+#   docker compose up -d
+#
+# Dashboards:  http://localhost:3000  (admin / admin)
+# Prometheus:  http://localhost:9090
+# Alertmanager: http://localhost:9093
+# Event Service: http://localhost:8080/health
+# Kafka UI:    http://localhost:8081
+
+networks:
+  monitoring:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+  grafana_data:
+  kafka_data:
+
+services:
+
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.listen-address=:9090
+      - --web.enable-lifecycle
+      - --log.level=info
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Alertmanager ───────────────────────────────────────────────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --web.listen-address=:9093
+      - --log.level=info
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - monitoring
+    depends_on:
+      event-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Grafana ────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SERVER_DOMAIN=localhost
+      - GF_LOG_LEVEL=warn
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - monitoring
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ── Node Exporter ──────────────────────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --web.listen-address=:9100
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.meminfo
+      - --collector.diskstats
+      - --collector.filesystem
+      - --collector.netdev
+      - --collector.loadavg
+      - --collector.uname
+      - --collector.time
+    pid: host
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - monitoring
+
+  # ── Blackbox Exporter ──────────────────────────────────────────────────────
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: blackbox-exporter
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox_exporter/blackbox.yml
+      - --web.listen-address=:9115
+    ports:
+      - "9115:9115"
+    volumes:
+      - ./configs/blackbox_exporter/blackbox.yml:/etc/blackbox_exporter/blackbox.yml:ro
+    networks:
+      - monitoring
+
+  # ── Kafka (KRaft — no Zookeeper) ───────────────────────────────────────────
+  kafka:
+    image: bitnami/kafka:3.6
+    container_name: kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"       # internal (service → kafka)
+      - "9094:9094"       # external (host → kafka, for kafka-console-consumer)
+    environment:
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_LOG_RETENTION_HOURS=24
+      - KAFKA_CFG_NUM_PARTITIONS=3
+    volumes:
+      - kafka_data:/bitnami/kafka
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ── Kafka UI ───────────────────────────────────────────────────────────────
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:9092
+      - DYNAMIC_CONFIG_ENABLED=true
+    networks:
+      - monitoring
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  # ── Event Service (Go) ─────────────────────────────────────────────────────
+  event-service:
+    build:
+      context: ${EVENT_SERVICE_PATH:-../../event-service}
+      dockerfile: Dockerfile
+    container_name: event-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - EVENT_SERVICE_PORT=8080
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC=monitoring.alerts
+      - KAFKA_REQUIRED_ACKS=all
+      - KAFKA_ASYNC=false
+      - LOG_LEVEL=info
+    networks:
+      - monitoring
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

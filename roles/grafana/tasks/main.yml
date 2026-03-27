@@ -1,0 +1,16 @@
+---
+- name: Import grafana install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [grafana_install]
+
+- name: Import grafana configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [grafana_configure]
+
+- name: Import grafana service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [grafana_service]
+
+- name: Import grafana firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [grafana_firewall]

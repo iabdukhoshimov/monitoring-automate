@@ -1,0 +1,40 @@
+---
+# Reload systemd when service file changes
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+# Step 1: validate config — runs BEFORE reload
+- name: Validate alertmanager config
+  ansible.builtin.command:
+    cmd: >-
+      {{ alertmanager_install_dir }}/amtool check-config
+      {{ alertmanager_config_dir }}/alertmanager.yml
+  changed_when: false
+  listen: validate and reload alertmanager
+
+# Step 2: hot reload — only fires if validate passed
+- name: Reload alertmanager
+  ansible.builtin.uri:
+    url: "http://localhost:{{ alertmanager_port }}/-/reload"
+    method: POST
+    status_code: 200
+  register: alertmanager_reload_result
+  failed_when: false
+  listen: validate and reload alertmanager
+
+# Step 3: restart if hot reload failed (e.g., service was down after binary update)
+- name: Restart alertmanager if hot reload failed
+  ansible.builtin.service:
+    name: alertmanager
+    state: restarted
+  when: alertmanager_reload_result.status is not defined or alertmanager_reload_result.status != 200
+  listen: validate and reload alertmanager
+
+# Hard restart — only used when binary changes
+- name: Restart alertmanager
+  ansible.builtin.service:
+    name: alertmanager
+    state: restarted
+  listen: restart alertmanager

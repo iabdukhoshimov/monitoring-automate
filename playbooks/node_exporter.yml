@@ -1,0 +1,6 @@
+---
+- name: Deploy node_exporter on all monitoring hosts
+  hosts: monitoring
+  become: true
+  roles:
+    - role: node_exporter

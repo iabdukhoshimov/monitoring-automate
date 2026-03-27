@@ -1,0 +1,39 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check node_exporter binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/node_exporter
+      register: node_exporter_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: node_exporter_binary.stat.exists and node_exporter_binary.stat.executable
+        fail_msg: "node_exporter binary not found or not executable"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert node_exporter service is running
+      ansible.builtin.assert:
+        that:
+          - "'node_exporter.service' in ansible_facts.services"
+          - "ansible_facts.services['node_exporter.service'].state == 'running'"
+        fail_msg: "node_exporter service is not running"
+
+    - name: Assert node_exporter port is listening
+      ansible.builtin.wait_for:
+        port: 9100
+        timeout: 30
+
+    - name: Assert node_exporter metrics endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:9100/metrics"
+        status_code: 200
+      register: node_exporter_metrics
+      retries: 5
+      delay: 3
+      until: node_exporter_metrics.status == 200

@@ -1,0 +1,38 @@
+---
+# Reload systemd when service file changes
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+# Step 1: validate config — runs BEFORE reload
+- name: Validate prometheus config
+  ansible.builtin.command:
+    cmd: "{{ prometheus_install_dir }}/promtool check config {{ prometheus_config_dir }}/prometheus.yml"
+  changed_when: false
+  listen: validate and reload prometheus
+
+# Step 2: hot reload — only fires if validate passed
+- name: Reload prometheus
+  ansible.builtin.uri:
+    url: "http://localhost:{{ prometheus_port }}/-/reload"
+    method: POST
+    status_code: 200
+  register: prometheus_reload_result
+  failed_when: false
+  listen: validate and reload prometheus
+
+# Step 3: restart if hot reload failed (e.g., service was down after binary update)
+- name: Restart prometheus if hot reload failed
+  ansible.builtin.service:
+    name: prometheus
+    state: restarted
+  when: prometheus_reload_result.status is not defined or prometheus_reload_result.status != 200
+  listen: validate and reload prometheus
+
+# Hard restart — only used when binary changes
+- name: Restart prometheus
+  ansible.builtin.service:
+    name: prometheus
+    state: restarted
+  listen: restart prometheus

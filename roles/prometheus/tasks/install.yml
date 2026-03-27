@@ -1,0 +1,112 @@
+---
+- name: Assert prometheus_checksum is set
+  ansible.builtin.assert:
+    that: prometheus_checksum | length > 0
+    fail_msg: >-
+      prometheus_checksum must be set in group_vars/prometheus/main.yml.
+      Get the SHA256 from https://github.com/prometheus/prometheus/releases
+
+- name: Set download architecture
+  ansible.builtin.set_fact:
+    prometheus_arch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Create prometheus system group
+  ansible.builtin.group:
+    name: "{{ prometheus_group }}"
+    system: true
+    state: present
+
+- name: Create prometheus system user
+  ansible.builtin.user:
+    name: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create prometheus directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0755"
+  loop:
+    - "{{ prometheus_config_dir }}"
+    - "{{ prometheus_rules_dir }}"
+    - "{{ prometheus_data_dir }}"
+
+- name: Check if prometheus binary exists
+  ansible.builtin.stat:
+    path: "{{ prometheus_install_dir }}/prometheus"
+  register: prometheus_binary
+
+- name: Check installed prometheus version
+  ansible.builtin.command:
+    cmd: "{{ prometheus_install_dir }}/prometheus --version"
+  register: prometheus_installed_version
+  changed_when: false
+  failed_when: false
+  when: prometheus_binary.stat.exists
+
+- name: Download prometheus archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/prometheus/prometheus/releases/download/v{{
+      prometheus_version }}/prometheus-{{ prometheus_version
+      }}.linux-{{ prometheus_arch }}.tar.gz
+    dest: "/tmp/prometheus-{{ prometheus_version }}.tar.gz"
+    checksum: "sha256:{{ prometheus_checksum[prometheus_arch] }}"
+    mode: "0644"
+  when: >
+    not prometheus_binary.stat.exists or
+    prometheus_version not in
+    (prometheus_installed_version.stdout | default(''))
+
+- name: Extract prometheus archive
+  ansible.builtin.unarchive:
+    src: "/tmp/prometheus-{{ prometheus_version }}.tar.gz"
+    dest: "/tmp"
+    remote_src: true
+  when: >
+    not prometheus_binary.stat.exists or
+    prometheus_version not in
+    (prometheus_installed_version.stdout | default(''))
+
+- name: Install prometheus binary
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-{{ prometheus_arch }}/prometheus"
+    dest: "{{ prometheus_install_dir }}/prometheus"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0755"
+    remote_src: true
+  notify: restart prometheus
+  when: >
+    not prometheus_binary.stat.exists or
+    prometheus_version not in
+    (prometheus_installed_version.stdout | default(''))
+
+- name: Install promtool binary
+  ansible.builtin.copy:
+    src: "/tmp/prometheus-{{ prometheus_version }}.linux-{{ prometheus_arch }}/promtool"
+    dest: "{{ prometheus_install_dir }}/promtool"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: "0755"
+    remote_src: true
+  when: >
+    not prometheus_binary.stat.exists or
+    prometheus_version not in
+    (prometheus_installed_version.stdout | default(''))
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/prometheus-{{ prometheus_version }}.tar.gz"
+    state: absent
+
+- name: Clean up extracted directory
+  ansible.builtin.file:
+    path: "/tmp/prometheus-{{ prometheus_version }}.linux-{{ prometheus_arch }}"
+    state: absent

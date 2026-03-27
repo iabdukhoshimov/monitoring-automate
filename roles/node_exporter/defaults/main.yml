@@ -1,0 +1,24 @@
+---
+node_exporter_version: "1.8.1"
+node_exporter_port: 9100
+node_exporter_user: "node_exporter"
+node_exporter_group: "node_exporter"
+node_exporter_install_dir: "/usr/local/bin"
+# SHA256 checksums per architecture — update when changing node_exporter_version
+# Get from: https://github.com/prometheus/node_exporter/releases
+node_exporter_checksum:
+  amd64: "fbadb376afa7c883f87f28b3f82520aba84b7914227b783d9b537aea96ef9754"
+  arm64: "3b5c4765e429d73d0ec83fcd14af39087025e1f7073422fa24be8f4fa3d3bb96"
+
+# Collectors — disable all defaults, enable only what we need.
+# Keeps cardinality low and scrape fast.
+node_exporter_collectors:
+  - cpu
+  - meminfo
+  - diskstats
+  - filesystem
+  - netdev
+  - loadavg
+  - uname
+  - time
+  - systemd

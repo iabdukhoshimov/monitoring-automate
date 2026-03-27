@@ -1,0 +1,60 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+# Pre-aggregated series — used by dashboards and alert expressions.
+# Recording rules trade storage for query speed.
+
+groups:
+
+  - name: node_recording_rules
+    interval: 1m
+    rules:
+
+      # CPU
+      - record: instance:node_cpu_utilization:rate5m
+        expr: >
+          100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+      # Memory
+      - record: instance:node_memory_utilization:ratio
+        expr: >
+          (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes)
+          / node_memory_MemTotal_bytes
+
+      # Disk — root filesystem only
+      - record: instance:node_filesystem_utilization:ratio
+        expr: >
+          1 - (
+            node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs"}
+            / node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs"}
+          )
+
+      # Load average per CPU — used by NodeHighLoadAverage alert
+      - record: instance:node_load1_per_cpu:ratio
+        expr: >
+          node_load1
+          / count without(cpu, mode) (node_cpu_seconds_total{mode="idle"})
+
+      # File descriptor utilization — used by NodeFileDescriptorExhaustion alert
+      - record: instance:node_filefd_utilization:ratio
+        expr: node_filefd_allocated / node_filefd_maximum
+
+      # Network receive/transmit
+      - record: instance:node_network_receive_bytes:rate5m
+        expr: >
+          sum by(instance) (rate(node_network_receive_bytes_total{device!="lo"}[5m]))
+
+      - record: instance:node_network_transmit_bytes:rate5m
+        expr: >
+          sum by(instance) (rate(node_network_transmit_bytes_total{device!="lo"}[5m]))
+
+  - name: blackbox_recording_rules
+    interval: 1m
+    rules:
+
+      # HTTP probe success ratio per target
+      - record: instance:probe_http_success:avg5m
+        expr: avg_over_time(probe_success{job=~"blackbox.*"}[5m])
+
+      # HTTP probe duration — avg over 5m per target
+      # probe_duration_seconds is a gauge (not histogram) — use avg_over_time
+      - record: instance:probe_http_duration_seconds:avg5m
+        expr: avg_over_time(probe_duration_seconds{job=~"blackbox.*"}[5m])

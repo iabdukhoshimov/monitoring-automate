@@ -1,0 +1,15 @@
+---
+# system
+# common_chrony_service is overridden per OS family in vars/
+common_chrony_service: chronyd
+
+common_packages:
+  - curl
+  - wget
+  - tar
+  - unzip
+  - vim
+  - net-tools
+  - chrony
+
+common_timezone: "UTC"

@@ -1,0 +1,47 @@
+---
+# Step 1: check which datasources already exist
+- name: Check if datasource exists
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/api/datasources/name/{{ item.name }}"
+    method: GET
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200, 404]
+  register: grafana_ds_check
+  loop: "{{ grafana_datasources }}"
+  loop_control:
+    label: "{{ item.name }}"
+  changed_when: false
+
+# Step 2: create datasources that do not exist yet
+- name: Create datasource
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/api/datasources"
+    method: POST
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body: "{{ item.item }}"
+    status_code: 200
+  when: item.status == 404
+  loop: "{{ grafana_ds_check.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+
+# Step 3: update datasources that already exist
+- name: Update datasource
+  ansible.builtin.uri:
+    url: "http://localhost:{{ grafana_port }}/api/datasources/{{ item.json.id }}"
+    method: PUT
+    user: "{{ grafana_admin_user }}"
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    body_format: json
+    body: "{{ item.item }}"
+    status_code: 200
+  when: item.status == 200
+  loop: "{{ grafana_ds_check.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"

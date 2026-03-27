@@ -1,0 +1,6 @@
+---
+# This file must be encrypted with: ansible-vault encrypt vault.yml
+# To edit: ansible-vault edit vault.yml
+
+vault_grafana_admin_password: "herewegomessi"
+vault_grafana_secret_key: "messi2000"

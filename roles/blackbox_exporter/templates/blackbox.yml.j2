@@ -1,0 +1,57 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+modules:
+
+  # ── HTTP probers ────────────────────────────────────────────────────────────
+
+  http_2xx:
+    prober: http
+    timeout: {{ blackbox_exporter_timeout_http }}
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: []  # defaults to 2xx
+      method: GET
+      follow_redirects: true
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+
+  http_2xx_post:
+    prober: http
+    timeout: {{ blackbox_exporter_timeout_http }}
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: []
+      method: POST
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+
+  http_basic_auth:
+    prober: http
+    timeout: {{ blackbox_exporter_timeout_http }}
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      method: GET
+      follow_redirects: false
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+      # basic_auth:
+      #   username: "{{ '{{' }} username {{ '}}' }}"
+      #   password: "{{ '{{' }} password {{ '}}' }}"
+
+  # ── TCP probers ─────────────────────────────────────────────────────────────
+
+  tcp_connect:
+    prober: tcp
+    timeout: {{ blackbox_exporter_timeout_tcp }}
+    tcp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false
+
+  # ── ICMP probers ─────────────────────────────────────────────────────────────
+
+  icmp:
+    prober: icmp
+    timeout: {{ blackbox_exporter_timeout_icmp }}
+    icmp:
+      preferred_ip_protocol: "ip4"
+      ip_protocol_fallback: false

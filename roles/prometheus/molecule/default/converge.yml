@@ -1,0 +1,21 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Checksum from group_vars/prometheus/main.yml
+    prometheus_checksum:
+      amd64: "e9b1e1b5a01f3ee37cb4abe913a6db17a61f5b1acee5e4d8f7ed9e7a50f6ff61"
+      arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
+    prometheus_cluster_name: "molecule-test"
+    # Cross-role port vars — normally come from each role's defaults
+    alertmanager_port: 9093
+    grafana_port: 3000
+    blackbox_exporter_port: 9115
+    node_exporter_port: 9100
+    # Empty targets — loops produce valid empty YAML, no external deps needed
+    prometheus_blackbox_http_targets: []
+    prometheus_blackbox_tcp_targets: []
+    prometheus_blackbox_icmp_targets: []
+  roles:
+    - role: prometheus

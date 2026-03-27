@@ -1,0 +1,48 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  molecule:
+    name: "molecule / ${{ matrix.role }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      matrix:
+        role:
+          - common
+          - node_exporter
+          - blackbox_exporter
+          - prometheus
+          - alertmanager
+          - grafana
+      fail-fast: false  # run all roles even if one fails
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: molecule-requirements.txt
+
+      - name: Install Molecule and Docker driver
+        run: pip install -r molecule-requirements.txt
+
+      - name: Install Ansible collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Run Molecule tests
+        working-directory: roles/${{ matrix.role }}
+        run: molecule test
+        env:
+          PY_COLORS: "1"
+          ANSIBLE_FORCE_COLOR: "1"

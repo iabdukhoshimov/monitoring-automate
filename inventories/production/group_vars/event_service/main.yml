@@ -1,0 +1,10 @@
+---
+# Event service version — update when releasing a new build
+event_service_version: "1.0.0"
+event_service_port: 8080
+
+# Kafka broker addresses (comma-separated)
+event_service_kafka_brokers: "kafka-1.internal:9092,kafka-2.internal:9092,kafka-3.internal:9092"
+
+# Kafka topic all alerts are published to
+event_service_kafka_topic: "monitoring.alerts"

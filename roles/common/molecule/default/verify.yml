@@ -1,0 +1,44 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Check common packages are installed
+      ansible.builtin.package:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - curl
+        - wget
+        - tar
+        - vim
+      check_mode: true
+      register: common_pkg_check
+      failed_when: common_pkg_check.changed
+
+    - name: Check timezone is UTC
+      ansible.builtin.command:
+        cmd: timedatectl show --property=Timezone --value
+      register: common_tz
+      changed_when: false
+      failed_when: common_tz.stdout | trim != "UTC"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert chrony is running (RedHat — chronyd)
+      ansible.builtin.assert:
+        that:
+          - "'chronyd.service' in ansible_facts.services"
+          - "ansible_facts.services['chronyd.service'].state == 'running'"
+        fail_msg: "chronyd service is not running on RedHat host"
+      when: ansible_os_family == "RedHat"
+
+    - name: Assert chrony is running (Debian — chrony)
+      ansible.builtin.assert:
+        that:
+          - "'chrony.service' in ansible_facts.services"
+          - "ansible_facts.services['chrony.service'].state == 'running'"
+        fail_msg: "chrony service is not running on Debian host"
+      when: ansible_os_family == "Debian"

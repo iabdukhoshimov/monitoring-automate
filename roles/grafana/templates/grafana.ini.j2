@@ -1,0 +1,78 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+################################
+[server]
+################################
+protocol         = http
+http_port        = {{ grafana_port }}
+domain           = {{ grafana_domain }}
+root_url         = {{ grafana_root_url }}
+serve_from_sub_path = false
+
+################################
+[database]
+################################
+# SQLite — sufficient for low-load monitoring
+type = sqlite3
+path = {{ grafana_data_dir }}/grafana.db
+
+################################
+[security]
+################################
+# admin_password only applied on FIRST start — to change password after
+# first run use: grafana-cli admin reset-admin-password <new_password>
+admin_user              = {{ grafana_admin_user }}
+admin_password          = {{ grafana_admin_password }}
+secret_key              = {{ grafana_secret_key }}
+disable_gravatar        = true
+# set cookie_secure = true when HTTPS/TLS is enabled
+cookie_secure           = false
+cookie_samesite         = lax
+
+################################
+[users]
+################################
+allow_sign_up           = false
+allow_org_create        = false
+auto_assign_org         = true
+auto_assign_org_role    = Viewer
+default_theme           = dark
+
+################################
+[auth]
+################################
+disable_login_form      = false
+disable_signout_menu    = false
+
+################################
+[unified_alerting]
+################################
+# Disabled — using Prometheus Alertmanager instead
+enabled = false
+
+################################
+[alerting]
+################################
+# Legacy alerting also disabled
+enabled = false
+
+################################
+[log]
+################################
+mode  = {{ grafana_log_mode }}
+level = {{ grafana_log_level }}
+
+################################
+[paths]
+################################
+data         = {{ grafana_data_dir }}
+logs         = {{ grafana_logs_dir }}
+plugins      = {{ grafana_plugins_dir }}
+provisioning = {{ grafana_config_dir }}/provisioning
+
+################################
+[analytics]
+################################
+reporting_enabled    = false
+check_for_updates    = false
+check_for_plugin_updates = false

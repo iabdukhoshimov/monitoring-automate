@@ -1,0 +1,59 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check grafana binary exists
+      ansible.builtin.stat:
+        path: /usr/share/grafana/bin/grafana
+      register: grafana_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: grafana_binary.stat.exists and grafana_binary.stat.executable
+        fail_msg: "grafana binary not found or not executable"
+
+    - name: Check grafana config file exists
+      ansible.builtin.stat:
+        path: /etc/grafana/grafana.ini
+      register: grafana_config_file
+
+    - name: Assert config file is present
+      ansible.builtin.assert:
+        that: grafana_config_file.stat.exists
+        fail_msg: "grafana.ini config not found"
+
+    - name: Check grafana data directory exists
+      ansible.builtin.stat:
+        path: /var/lib/grafana
+      register: grafana_data_dir
+
+    - name: Assert data directory is present
+      ansible.builtin.assert:
+        that: grafana_data_dir.stat.isdir
+        fail_msg: "grafana data directory not found"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert grafana service is running
+      ansible.builtin.assert:
+        that:
+          - "'grafana.service' in ansible_facts.services"
+          - "ansible_facts.services['grafana.service'].state == 'running'"
+        fail_msg: "grafana service is not running"
+
+    - name: Assert grafana port is listening
+      ansible.builtin.wait_for:
+        port: 3000
+        timeout: 60
+
+    - name: Assert grafana API health endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:3000/api/health"
+        status_code: 200
+      register: grafana_health
+      retries: 10
+      delay: 5
+      until: grafana_health.status == 200

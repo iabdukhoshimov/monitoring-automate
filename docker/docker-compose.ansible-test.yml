@@ -1,0 +1,32 @@
+# Ansible integration test environment
+#
+# Spins up a single Rocky Linux 9 container with systemd running.
+# Ansible connects via Docker exec (no SSH needed).
+# All monitoring services are deployed onto this one container.
+#
+# Usage:
+#   cd docker/
+#   docker compose -f docker-compose.ansible-test.yml up -d
+#   cd ..
+#   ansible-playbook -i inventories/docker/hosts.ini site.yml
+#
+# Then open:
+#   Grafana       http://localhost:3000  (admin / admin)
+#   Prometheus    http://localhost:9090
+#   Alertmanager  http://localhost:9093
+
+services:
+  mon-node:
+    image: geerlingguy/docker-rockylinux9-ansible:latest
+    container_name: mon-node
+    hostname: mon-node
+    privileged: true
+    command: /usr/sbin/init
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ports:
+      - "9090:9090"    # Prometheus
+      - "9093:9093"    # Alertmanager
+      - "3000:3000"    # Grafana
+      - "9100:9100"    # Node Exporter
+      - "9115:9115"    # Blackbox Exporter

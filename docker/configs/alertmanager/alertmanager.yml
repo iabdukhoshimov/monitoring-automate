@@ -1,0 +1,18 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: "event-service"
+  group_by:
+    - alertname
+    - instance
+    - severity
+  group_wait: 10s          # short for local dev (prod: 30s)
+  group_interval: 1m       # short for local dev (prod: 5m)
+  repeat_interval: 10m     # short for local dev (prod: 4h)
+
+receivers:
+  - name: "event-service"
+    webhook_configs:
+      - url: "http://event-service:8080/webhook"
+        send_resolved: true

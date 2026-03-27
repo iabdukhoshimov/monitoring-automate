@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Checksum from group_vars/alertmanager/main.yml
+    alertmanager_checksum:
+      amd64: "2ff5f32b4b4f4b8e6ba19fe9aedb6a2e0a0bbe36d1183d9fc9aedb43e3c5ba71"
+      arm64: "a754304b682cec61f4bd5cfc029b451a30134554b3a2f21a9c487e12814ff8f3"
+    alertmanager_event_service_url: "http://localhost:8080"
+  roles:
+    - role: alertmanager

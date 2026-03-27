@@ -1,0 +1,11 @@
+---
+- name: Restart chrony
+  ansible.builtin.service:
+    name: "{{ common_chrony_service }}"
+    state: restarted
+  listen: restart chrony
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd

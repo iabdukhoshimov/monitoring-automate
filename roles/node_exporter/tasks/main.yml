@@ -1,0 +1,8 @@
+---
+- name: Import node_exporter install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [node_exporter_install]
+
+- name: Import node_exporter firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [node_exporter_firewall]

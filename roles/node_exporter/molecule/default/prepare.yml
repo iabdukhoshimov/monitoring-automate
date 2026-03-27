@@ -1,0 +1,25 @@
+---
+- name: Prepare
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install and start firewalld (RedHat)
+      when: ansible_os_family == "RedHat"
+      block:
+        - name: Install firewalld
+          ansible.builtin.package:
+            name: firewalld
+            state: present
+        - name: Start firewalld
+          ansible.builtin.service:
+            name: firewalld
+            state: started
+            enabled: true
+
+    - name: Install ufw (Debian)
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
