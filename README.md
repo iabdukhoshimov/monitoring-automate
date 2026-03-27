@@ -47,7 +47,7 @@ Deploys on **Rocky Linux 9 / RHEL / CentOS** and **Ubuntu 22.04 / Debian** — x
                │ POST /webhook  (send_resolved: true)
                ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  EVENT SERVICE  :8080  (Go — to be built)                    │
+│  EVENT SERVICE  :8080  (Go)                                  │
 │                                                              │
 │  • Receives Alertmanager webhook payload                     │
 │  • Normalizes to AlertEvent schema                           │
@@ -188,8 +188,7 @@ Every component runs as a dedicated non-root system user, managed by systemd, wi
 │   ├── prometheus.yml
 │   ├── alertmanager.yml
 │   ├── grafana.yml
-│   ├── grafana_api.yml               # Datasource + dashboard provisioning via HTTP API
-│   └── event_service.yml             # Deploy Go event service (webhook → Kafka)
+│   └── grafana_api.yml               # Datasource + dashboard provisioning via HTTP API
 ├── roles/
 │   ├── common/                       # OS prep, chrony, common packages
 │   ├── prometheus/
@@ -202,19 +201,35 @@ Every component runs as a dedicated non-root system user, managed by systemd, wi
 │   │       └── alertmanager.yml.j2     # Single webhook receiver
 │   ├── grafana/
 │   ├── blackbox_exporter/
-│   ├── node_exporter/
-│   └── event_service/                # Go binary + systemd unit deploy
-└── inventories/production/
-    ├── hosts.ini
-    └── group_vars/
-        ├── all/
-        │   ├── main.yml              # Grafana vault aliases
-        │   └── vault.yml             # Encrypted secrets (ansible-vault)
-        ├── prometheus/main.yml       # Version, checksums, blackbox targets
-        ├── alertmanager/main.yml     # Version, checksums, event_service_url
-        ├── grafana/main.yml          # Version, datasources, dashboard list
-        ├── blackbox_exporter/main.yml
-        └── event_service/main.yml    # Kafka brokers, topic, port
+│   └── node_exporter/
+└── inventories/
+    ├── dev/                          # 7d retention · 30s scrape · 1 Kafka broker
+    │   ├── hosts.ini
+    │   └── group_vars/
+    │       ├── all/          # vault.yml + main.yml (env: dev)
+    │       ├── prometheus/
+    │       ├── alertmanager/
+    │       ├── grafana/
+    │       ├── blackbox_exporter/
+    │       └── event_service/
+    ├── staging/                      # 15d retention · 15s scrape · 2 Kafka brokers
+    │   ├── hosts.ini
+    │   └── group_vars/
+    │       ├── all/          # vault.yml + main.yml (env: staging)
+    │       ├── prometheus/
+    │       ├── alertmanager/
+    │       ├── grafana/
+    │       ├── blackbox_exporter/
+    │       └── event_service/
+    └── production/                   # 30d retention · 15s scrape · 3 Kafka brokers
+        ├── hosts.ini
+        └── group_vars/
+            ├── all/          # vault.yml + main.yml (env: production)
+            ├── prometheus/
+            ├── alertmanager/
+            ├── grafana/
+            ├── blackbox_exporter/
+            └── event_service/
 ```
 
 ---
@@ -244,69 +259,55 @@ cd monitoring-automate
 ansible-galaxy collection install -r requirements.yml
 ```
 
-### 3. Create the vault
+### 3. Choose your environment and edit hosts
+
+Replace placeholder hostnames with your actual servers:
 
 ```bash
-ansible-vault create inventories/production/group_vars/all/vault.yml
+# Choose one: dev | staging | production
+ENV=production
+vim inventories/$ENV/hosts.ini
 ```
 
-Add:
+### 4. Encrypt the vault
+
+The vault files contain plaintext defaults — encrypt them before deploying:
+
+```bash
+ansible-vault encrypt inventories/$ENV/group_vars/all/vault.yml
+# then set real credentials:
+ansible-vault edit inventories/$ENV/group_vars/all/vault.yml
+```
+
+Vault keys:
 
 ```yaml
 vault_grafana_admin_password: "your-strong-password"
 vault_grafana_secret_key: "your-32-char-secret-key-minimum!"
 ```
 
-### 4. Configure inventory
-
-Edit `inventories/production/hosts.ini`:
-
-```ini
-[prometheus]
-prometheus-1.internal
-
-[alertmanager]
-alertmanager-1.internal
-
-[grafana]
-grafana-1.internal
-
-[blackbox_exporter]
-blackbox-1.internal
-
-[event_service]
-event-service-1.internal
-
-[monitoring:children]
-prometheus
-alertmanager
-grafana
-blackbox_exporter
-event_service
-```
-
 ### 5. Set blackbox targets
 
-Edit `inventories/production/group_vars/prometheus/main.yml`:
+Edit `inventories/$ENV/group_vars/prometheus/main.yml`:
 
 ```yaml
 prometheus_blackbox_http_targets:
   - "https://your-app.example.com"
-  - "http://prometheus-1.internal:9090/-/healthy"
+  - "http://prometheus.example.com:9090/-/healthy"
 
 prometheus_blackbox_tcp_targets:
-  - "prometheus-1.internal:9090"
+  - "prometheus.example.com:9090"
 
 prometheus_blackbox_icmp_targets:
-  - "prometheus-1.internal"
+  - "prometheus.example.com"
 ```
 
 ### 6. Set event service URL
 
-Edit `inventories/production/group_vars/alertmanager/main.yml`:
+Edit `inventories/$ENV/group_vars/alertmanager/main.yml`:
 
 ```yaml
-alertmanager_event_service_url: "http://event-service-1.internal:8080"
+alertmanager_event_service_url: "http://event-service.example.com:8080"
 ```
 
 ### 7. Deploy
@@ -314,14 +315,21 @@ alertmanager_event_service_url: "http://event-service-1.internal:8080"
 Full stack:
 
 ```bash
-ansible-playbook -i inventories/production/hosts.ini site.yml --ask-vault-pass
+# Dev
+ansible-playbook -i inventories/dev site.yml --ask-vault-pass
+
+# Staging
+ansible-playbook -i inventories/staging site.yml --ask-vault-pass
+
+# Production
+ansible-playbook -i inventories/production site.yml --ask-vault-pass
 ```
 
 Single component:
 
 ```bash
-ansible-playbook -i inventories/production/hosts.ini playbooks/prometheus.yml --ask-vault-pass
-ansible-playbook -i inventories/production/hosts.ini playbooks/grafana_api.yml --ask-vault-pass
+ansible-playbook -i inventories/production playbooks/prometheus.yml --ask-vault-pass
+ansible-playbook -i inventories/production playbooks/grafana_api.yml --ask-vault-pass
 ```
 
 ---
@@ -331,7 +339,7 @@ ansible-playbook -i inventories/production/hosts.ini playbooks/grafana_api.yml -
 `site.yml` deploys in this sequence, which resolves all dependencies:
 
 ```
-common → node_exporter → blackbox_exporter → prometheus → alertmanager → grafana → grafana_api → event_service
+common → node_exporter → blackbox_exporter → prometheus → alertmanager → grafana → grafana_api
 ```
 
 - `grafana_api.yml` runs after `grafana` — the HTTP API must be up first

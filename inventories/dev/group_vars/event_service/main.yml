@@ -1,0 +1,7 @@
+---
+event_service_version: "1.0.0"
+event_service_port: 8080
+
+# Single Kafka broker for dev
+event_service_kafka_brokers: "dev-kafka.example.com:9092"
+event_service_kafka_topic: "monitoring.alerts.dev"

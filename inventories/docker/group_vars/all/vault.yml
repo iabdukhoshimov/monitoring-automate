@@ -1,5 +1,0 @@
----
-# Plain text — NOT encrypted. For local Docker testing only.
-# Never use these credentials in production.
-vault_grafana_admin_password: "admin"
-vault_grafana_secret_key: "docker-test-secret-key-32chars!!"

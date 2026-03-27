@@ -1,6 +1,7 @@
 ---
 # This file must be encrypted with: ansible-vault encrypt vault.yml
 # To edit: ansible-vault edit vault.yml
+# NEVER commit this file unencrypted.
 
-vault_grafana_admin_password: "herewegomessi"
-vault_grafana_secret_key: "messi2000"
+vault_grafana_admin_password: "CHANGE_ME_before_deploy"
+vault_grafana_secret_key: "CHANGE_ME_min_32_chars_secret_key!"

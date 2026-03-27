@@ -1,6 +1,5 @@
 ---
-env: docker-test
+env: dev
 
-# Vault aliases — point to plaintext vault.yml (no encryption for local testing)
 grafana_admin_password: "{{ vault_grafana_admin_password }}"
 grafana_secret_key: "{{ vault_grafana_secret_key }}"

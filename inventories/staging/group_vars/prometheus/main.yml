@@ -1,0 +1,30 @@
+---
+prometheus_version: "2.51.0"
+prometheus_port: 9090
+node_exporter_port: 9100
+prometheus_retention: "15d"
+prometheus_scrape_interval: "15s"
+prometheus_evaluation_interval: "15s"
+prometheus_cluster_name: "staging"
+
+# SHA256 checksums per architecture — update when changing prometheus_version
+# Get from: https://github.com/prometheus/prometheus/releases
+prometheus_checksum:
+  amd64: "e9b1e1b5a01f3ee37cb4abe913a6db17a61f5b1acee5e4d8f7ed9e7a50f6ff61"
+  arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
+
+prometheus_blackbox_http_targets:
+  - "http://staging-grafana.example.com:3000"
+  - "http://staging-prometheus.example.com:9090/-/healthy"
+  - "http://staging-alertmanager.example.com:9093/-/healthy"
+
+prometheus_blackbox_tcp_targets:
+  - "staging-prometheus.example.com:9090"
+  - "staging-alertmanager.example.com:9093"
+  - "staging-grafana.example.com:3000"
+
+prometheus_blackbox_icmp_targets:
+  - "staging-prometheus.example.com"
+  - "staging-alertmanager.example.com"
+  - "staging-grafana.example.com"
+  - "staging-blackbox.example.com"

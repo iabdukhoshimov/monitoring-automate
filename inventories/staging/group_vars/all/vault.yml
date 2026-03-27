@@ -1,0 +1,6 @@
+---
+# This file must be encrypted with: ansible-vault encrypt vault.yml
+# To edit: ansible-vault edit vault.yml
+
+vault_grafana_admin_password: "staging-change-me"
+vault_grafana_secret_key: "staging-secret-key-32chars-change!"

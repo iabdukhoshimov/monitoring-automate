@@ -1,0 +1,14 @@
+---
+alertmanager_version: "0.27.0"
+alertmanager_port: 9093
+alertmanager_group_wait: "10s"
+alertmanager_group_interval: "1m"
+alertmanager_repeat_interval: "1h"
+
+# SHA256 checksums per architecture — update when changing alertmanager_version
+# Get from: https://github.com/prometheus/alertmanager/releases
+alertmanager_checksum:
+  amd64: "2ff5f32b4b4f4b8e6ba19fe9aedb6a2e0a0bbe36d1183d9fc9aedb43e3c5ba71"
+  arm64: "a754304b682cec61f4bd5cfc029b451a30134554b3a2f21a9c487e12814ff8f3"
+
+alertmanager_event_service_url: "http://dev-event-service.example.com:8080"

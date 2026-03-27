@@ -3,3 +3,13 @@
 
 # ansible retry files
 *.retry
+
+# molecule temp directories
+.molecule/
+molecule/.molecule/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
