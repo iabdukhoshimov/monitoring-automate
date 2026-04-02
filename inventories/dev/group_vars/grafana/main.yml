@@ -12,7 +12,7 @@ grafana_datasources:
     type: "prometheus"
     access: "proxy"
     isDefault: true
-    url: "http://{{ groups['prometheus'][0] }}:{{ prometheus_port }}"
+    url: "http://{{ hostvars[groups['prometheus'][0]]['ansible_host'] }}:{{ prometheus_port }}"
     jsonData:
       timeInterval: "{{ prometheus_scrape_interval }}"
       httpMethod: "POST"

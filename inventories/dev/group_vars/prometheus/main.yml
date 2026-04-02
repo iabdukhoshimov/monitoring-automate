@@ -14,17 +14,14 @@ prometheus_checksum:
   arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
 
 prometheus_blackbox_http_targets:
-  - "http://dev-grafana.example.com:3000"
-  - "http://dev-prometheus.example.com:9090/-/healthy"
-  - "http://dev-alertmanager.example.com:9093/-/healthy"
+  - "http://100.96.125.99:3000"
+  - "http://100.96.125.99:9090/-/healthy"
+  - "http://100.96.125.99:9093/-/healthy"
 
 prometheus_blackbox_tcp_targets:
-  - "dev-prometheus.example.com:9090"
-  - "dev-alertmanager.example.com:9093"
-  - "dev-grafana.example.com:3000"
+  - "100.96.125.99:9090"
+  - "100.96.125.99:9093"
+  - "100.96.125.99:3000"
 
 prometheus_blackbox_icmp_targets:
-  - "dev-prometheus.example.com"
-  - "dev-alertmanager.example.com"
-  - "dev-grafana.example.com"
-  - "dev-blackbox.example.com"
+  - "100.96.125.99"

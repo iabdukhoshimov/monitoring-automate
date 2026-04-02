@@ -12,7 +12,7 @@ alerting:
 {% for host in groups['alertmanager'] %}
     - static_configs:
         - targets:
-            - "{{ host }}:{{ alertmanager_port }}"
+            - "{{ hostvars[host]['ansible_host'] }}:{{ alertmanager_port }}"
 {% endfor %}
 
 rule_files:
@@ -31,7 +31,7 @@ scrape_configs:
     static_configs:
       - targets:
 {% for host in groups['monitoring'] %}
-          - "{{ host }}:{{ node_exporter_port }}"
+          - "{{ hostvars[host]['ansible_host'] }}:{{ node_exporter_port }}"
 {% endfor %}
 
   # Alertmanager self-monitoring
@@ -39,7 +39,7 @@ scrape_configs:
     static_configs:
       - targets:
 {% for host in groups['alertmanager'] %}
-          - "{{ host }}:{{ alertmanager_port }}"
+          - "{{ hostvars[host]['ansible_host'] }}:{{ alertmanager_port }}"
 {% endfor %}
 
   # Grafana self-monitoring
@@ -47,7 +47,7 @@ scrape_configs:
     static_configs:
       - targets:
 {% for host in groups['grafana'] %}
-          - "{{ host }}:{{ grafana_port }}"
+          - "{{ hostvars[host]['ansible_host'] }}:{{ grafana_port }}"
 {% endfor %}
 
   # Blackbox exporter self-monitoring
@@ -55,7 +55,7 @@ scrape_configs:
     static_configs:
       - targets:
 {% for host in groups['blackbox_exporter'] %}
-          - "{{ host }}:{{ blackbox_exporter_port }}"
+          - "{{ hostvars[host]['ansible_host'] }}:{{ blackbox_exporter_port }}"
 {% endfor %}
 
 {% if prometheus_blackbox_http_targets %}
@@ -75,7 +75,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: "{{ groups['blackbox_exporter'][0] }}:{{ blackbox_exporter_port }}"
+        replacement: "{{ hostvars[groups['blackbox_exporter'][0]]['ansible_host'] }}:{{ blackbox_exporter_port }}"
 {% endif %}
 
 {% if prometheus_blackbox_tcp_targets %}
@@ -95,7 +95,7 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: "{{ groups['blackbox_exporter'][0] }}:{{ blackbox_exporter_port }}"
+        replacement: "{{ hostvars[groups['blackbox_exporter'][0]]['ansible_host'] }}:{{ blackbox_exporter_port }}"
 {% endif %}
 
 {% if prometheus_blackbox_icmp_targets %}
@@ -115,5 +115,5 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: "{{ groups['blackbox_exporter'][0] }}:{{ blackbox_exporter_port }}"
+        replacement: "{{ hostvars[groups['blackbox_exporter'][0]]['ansible_host'] }}:{{ blackbox_exporter_port }}"
 {% endif %}
