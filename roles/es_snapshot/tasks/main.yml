@@ -1,0 +1,4 @@
+---
+- name: Import es_snapshot configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [es_snapshot_configure]

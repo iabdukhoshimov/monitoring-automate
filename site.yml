@@ -19,3 +19,6 @@
 
 - name: Configure Grafana via API (datasources + dashboards)
   import_playbook: playbooks/grafana_api.yml
+
+- name: Configure Elasticsearch snapshot lifecycle to MinIO
+  import_playbook: playbooks/es_snapshot.yml

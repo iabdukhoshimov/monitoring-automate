@@ -1,0 +1,76 @@
+---
+# One-time setup on the Elasticsearch host.
+# Run via: ansible-playbook playbooks/es_snapshot_prereqs.yml
+#
+# What it does:
+#   1. Installs the repository-s3 plugin (required for MinIO/S3 snapshots)
+#   2. Writes S3 client settings to elasticsearch.yml
+#   3. Stores MinIO credentials in the ES keystore
+#   4. Reloads ES secure settings without a full restart
+
+- name: Assert MinIO credentials are set
+  ansible.builtin.assert:
+    that:
+      - es_snapshot_minio_access_key | length > 0
+      - es_snapshot_minio_secret_key | length > 0
+    fail_msg: >-
+      es_snapshot_minio_access_key and es_snapshot_minio_secret_key must be set.
+      Store them in vault and reference via group_vars.
+
+- name: Check if repository-s3 plugin is installed
+  ansible.builtin.command:
+    cmd: "{{ es_snapshot_es_home }}/bin/elasticsearch-plugin list"
+  register: es_plugins_list
+  changed_when: false
+
+- name: Install repository-s3 plugin
+  ansible.builtin.command:
+    cmd: "{{ es_snapshot_es_home }}/bin/elasticsearch-plugin install --batch repository-s3"
+  when: "'repository-s3' not in es_plugins_list.stdout"
+  notify: restart elasticsearch
+
+- name: Flush handlers to restart ES before keystore changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Configure S3 client endpoint in elasticsearch.yml
+  ansible.builtin.blockinfile:
+    path: /etc/elasticsearch/elasticsearch.yml
+    marker: "# {mark} ANSIBLE MANAGED — es_snapshot s3 client"
+    block: |
+      s3.client.{{ es_snapshot_s3_client_name }}.endpoint: "{{ es_snapshot_minio_url }}"
+      s3.client.{{ es_snapshot_s3_client_name }}.path_style_access: true
+      s3.client.{{ es_snapshot_s3_client_name }}.protocol: "{{ 'https' if es_snapshot_minio_url.startswith('https') else 'http' }}"
+  notify: restart elasticsearch
+
+- name: Flush handlers to restart ES after config change
+  ansible.builtin.meta: flush_handlers
+
+- name: Check if access_key is already in keystore
+  ansible.builtin.command:
+    cmd: "{{ es_snapshot_es_home }}/bin/elasticsearch-keystore list"
+  register: es_keystore_list
+  changed_when: false
+
+- name: Add MinIO access_key to ES keystore
+  ansible.builtin.shell:
+    cmd: >
+      echo -n "{{ es_snapshot_minio_access_key }}" |
+      {{ es_snapshot_es_home }}/bin/elasticsearch-keystore add --stdin --force
+      s3.client.{{ es_snapshot_s3_client_name }}.access_key
+  when: >
+    's3.client.' + es_snapshot_s3_client_name + '.access_key'
+    not in es_keystore_list.stdout
+  no_log: true
+  notify: reload es secure settings
+
+- name: Add MinIO secret_key to ES keystore
+  ansible.builtin.shell:
+    cmd: >
+      echo -n "{{ es_snapshot_minio_secret_key }}" |
+      {{ es_snapshot_es_home }}/bin/elasticsearch-keystore add --stdin --force
+      s3.client.{{ es_snapshot_s3_client_name }}.secret_key
+  when: >
+    's3.client.' + es_snapshot_s3_client_name + '.secret_key'
+    not in es_keystore_list.stdout
+  no_log: true
+  notify: reload es secure settings

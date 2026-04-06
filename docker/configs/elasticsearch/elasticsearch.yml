@@ -1,0 +1,13 @@
+# Local dev Elasticsearch configuration
+# Security is disabled for simplicity — do NOT use this config in production.
+
+cluster.name: "monitoring-dev"
+discovery.type: single-node
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+
+# S3 client settings for MinIO snapshot repository
+# Credentials are loaded from the keystore (set in entrypoint.sh at startup)
+s3.client.minio.endpoint: "http://minio:9000"
+s3.client.minio.path_style_access: "true"
+s3.client.minio.protocol: "http"

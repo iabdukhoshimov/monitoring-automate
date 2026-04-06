@@ -1,0 +1,18 @@
+---
+- name: Restart elasticsearch
+  ansible.builtin.service:
+    name: elasticsearch
+    state: restarted
+  listen: restart elasticsearch
+
+- name: Reload ES secure settings
+  ansible.builtin.uri:
+    url: "{{ es_snapshot_es_url }}/_nodes/reload_secure_settings"
+    method: POST
+    url_username: "{{ es_snapshot_es_user | default(omit) }}"
+    url_password: "{{ es_snapshot_es_password | default(omit) }}"
+    force_basic_auth: "{{ es_snapshot_es_user != '' }}"
+    body_format: json
+    body: {}
+    status_code: 200
+  listen: reload es secure settings

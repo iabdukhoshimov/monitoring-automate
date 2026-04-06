@@ -1,0 +1,17 @@
+---
+# Idempotent: registers the MinIO snapshot repository in Elasticsearch,
+# configures the ILM lifecycle policy, and sets up the SLM schedule.
+#
+# Run this after es_snapshot_prereqs.yml has been executed on the ES host.
+# Safe to re-run at any time — all operations are PUT (upsert).
+#
+# Usage:
+#   ansible-playbook playbooks/es_snapshot.yml -i inventories/production
+
+- name: Configure Elasticsearch snapshot lifecycle to MinIO
+  hosts: prometheus
+  become: false
+  run_once: true
+  roles:
+    - role: es_snapshot
+  tags: [es_snapshot]

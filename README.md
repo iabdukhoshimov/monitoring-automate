@@ -354,6 +354,7 @@ common → node_exporter → blackbox_exporter → prometheus → alertmanager �
 3. Re-run the component playbook — the role detects the version change and reinstalls
 
 Checksum sources:
+
 - Prometheus / Alertmanager / Node Exporter / Blackbox Exporter — [github.com/prometheus](https://github.com/prometheus)
 - Grafana — [grafana.com/grafana/download](https://grafana.com/grafana/download?edition=oss)
 
@@ -438,4 +439,3 @@ Alertmanager routing tree: `http://alertmanager-1.internal:9093/#/status`
 ## License
 
 MIT
-# Updated
