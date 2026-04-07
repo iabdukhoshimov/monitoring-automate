@@ -1,0 +1,12 @@
+---
+- name: Import promtail install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [promtail_install]
+
+- name: Import promtail configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [promtail_configure]
+
+- name: Import promtail service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [promtail_service]

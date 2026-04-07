@@ -7,11 +7,6 @@ grafana_checksum: ""
 grafana_admin_user: "admin"
 grafana_domain: "trust.internal"
 
-# Elasticsearch datasource (existing cluster)
-elasticsearch_url: "http://as-1.internal:9200"
-elasticsearch_index: "logs-*"
-elasticsearch_time_field: "@timestamp"
-
 # Datasources — provisioned via Grafana API
 # URLs built dynamically from inventory groups
 grafana_datasources:
@@ -24,17 +19,13 @@ grafana_datasources:
       timeInterval: "{{ prometheus_scrape_interval }}"
       httpMethod: "POST"
 
-  - name: "Elasticsearch"
-    type: "elasticsearch"
+  - name: "Loki"
+    type: "loki"
     access: "proxy"
     isDefault: false
-    url: "{{ elasticsearch_url }}"
-    database: "{{ elasticsearch_index }}"
+    url: "http://{{ groups['loki'][0] }}:{{ loki_port }}"
     jsonData:
-      esVersion: "8.0.0"
-      timeField: "{{ elasticsearch_time_field }}"
-      logMessageField: "message"
-      logLevelField: "level"
+      maxLines: 1000
 
 # Dashboards — auto-imported from grafana.com on first deploy.
 # uid: checked first — skipped if already present (idempotent).
@@ -70,3 +61,13 @@ grafana_dashboards:
         type: datasource
         pluginId: prometheus
         value: "Prometheus"
+
+  - name: "loki-logs"
+    gnet_id: 13639
+    revision: 2
+    uid: "loki-logs-dashboard"
+    inputs:
+      - name: "DS_LOKI"
+        type: datasource
+        pluginId: loki
+        value: "Loki"

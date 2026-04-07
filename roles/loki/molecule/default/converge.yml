@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    loki_checksum:
+      amd64: ""
+      arm64: ""
+    loki_alertmanager_url: "http://localhost:9093"
+  roles:
+    - role: loki

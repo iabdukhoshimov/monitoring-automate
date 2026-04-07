@@ -1,0 +1,11 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    promtail_checksum:
+      amd64: ""
+      arm64: ""
+    promtail_loki_url: "http://localhost:3100/loki/api/v1/push"
+  roles:
+    - role: promtail

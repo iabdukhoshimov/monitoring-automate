@@ -1,0 +1,8 @@
+---
+- name: Deploy Loki
+  hosts: loki
+  become: true
+  roles:
+    - role: common
+    - role: loki
+  tags: [loki]

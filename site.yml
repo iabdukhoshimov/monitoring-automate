@@ -17,8 +17,11 @@
 - name: Deploy Grafana
   import_playbook: playbooks/grafana.yml
 
+- name: Deploy Loki
+  import_playbook: playbooks/loki.yml
+
+- name: Deploy Promtail
+  import_playbook: playbooks/promtail.yml
+
 - name: Configure Grafana via API (datasources + dashboards)
   import_playbook: playbooks/grafana_api.yml
-
-- name: Configure Elasticsearch snapshot lifecycle to MinIO
-  import_playbook: playbooks/es_snapshot.yml

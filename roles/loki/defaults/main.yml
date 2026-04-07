@@ -1,0 +1,24 @@
+---
+loki_version: "3.0.0"
+loki_port: 3100
+loki_grpc_port: 9096
+
+# system
+loki_user: "loki"
+loki_group: "loki"
+loki_install_dir: "/usr/local/bin"
+loki_config_dir: "/etc/loki"
+loki_data_dir: "/var/lib/loki"
+
+# storage
+loki_retention_period: "30d"
+loki_chunks_dir: "{{ loki_data_dir }}/chunks"
+loki_rules_dir: "{{ loki_data_dir }}/rules"
+loki_compactor_dir: "{{ loki_data_dir }}/compactor"
+
+# Checksums — must be set via group_vars; no safe defaults exist
+# Get from: https://github.com/grafana/loki/releases
+loki_checksum: {}
+
+# Alertmanager URL for ruler integration
+loki_alertmanager_url: "http://localhost:9093"

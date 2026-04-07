@@ -9,6 +9,7 @@
 # Dashboards:  http://localhost:3000  (admin / admin)
 # Prometheus:  http://localhost:9090
 # Alertmanager: http://localhost:9093
+# Loki:        http://localhost:3100
 # Event Service: http://localhost:8080/health
 # Kafka UI:    http://localhost:8081
 
@@ -21,8 +22,7 @@ volumes:
   alertmanager_data:
   grafana_data:
   kafka_data:
-  elasticsearch_data:
-  minio_data:
+  loki_data:
 
 services:
 
@@ -196,73 +196,41 @@ services:
       kafka:
         condition: service_healthy
 
-  # ── Elasticsearch (local dev — external in production) ────────────────────
-  elasticsearch:
-    build:
-      context: ./elasticsearch
-      dockerfile: Dockerfile
-    container_name: elasticsearch
+  # ── Loki (log aggregation) ─────────────────────────────────────────────────
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
     restart: unless-stopped
-    environment:
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - ES_S3_CLIENT_NAME=minio
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: -config.file=/etc/loki/loki.yml
     ports:
-      - "9200:9200"
+      - "3100:3100"
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+      - ./configs/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
     networks:
       - monitoring
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 45s
-
-  # ── MinIO (S3-compatible object storage for ES snapshots) ──────────────────
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
-    ports:
-      - "9000:9000"   # S3 API
-      - "9001:9001"   # MinIO Console  →  http://localhost:9001
-    volumes:
-      - minio_data:/data
-    networks:
-      - monitoring
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3100/ready"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
 
-  # ── MinIO bucket init (creates es-snapshots bucket on first run) ───────────
-  minio-init:
-    image: minio/mc:latest
-    container_name: minio-init
+  # ── Promtail (log shipper → Loki) ──────────────────────────────────────────
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - ./configs/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
     networks:
       - monitoring
     depends_on:
-      minio:
+      loki:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-        mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
-        mc mb --ignore-existing local/es-snapshots;
-        echo 'Bucket es-snapshots ready';
-      "
-    environment:
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
-    restart: "no"
 
   # ── Event Service (Go) ─────────────────────────────────────────────────────
   event-service:

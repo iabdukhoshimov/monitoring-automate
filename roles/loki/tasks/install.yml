@@ -1,0 +1,97 @@
+---
+- name: Assert loki_checksum is set
+  ansible.builtin.assert:
+    that: loki_checksum | length > 0
+    fail_msg: >-
+      loki_checksum must be set in group_vars/loki/main.yml.
+      Get the SHA256 from https://github.com/grafana/loki/releases
+
+- name: Set download architecture
+  ansible.builtin.set_fact:
+    loki_arch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Create loki system group
+  ansible.builtin.group:
+    name: "{{ loki_group }}"
+    system: true
+    state: present
+
+- name: Create loki system user
+  ansible.builtin.user:
+    name: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create loki directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+  loop:
+    - "{{ loki_config_dir }}"
+    - "{{ loki_data_dir }}"
+    - "{{ loki_chunks_dir }}"
+    - "{{ loki_rules_dir }}"
+    - "{{ loki_compactor_dir }}"
+
+- name: Check if loki binary exists
+  ansible.builtin.stat:
+    path: "{{ loki_install_dir }}/loki"
+  register: loki_binary
+
+- name: Check installed loki version
+  ansible.builtin.command:
+    cmd: "{{ loki_install_dir }}/loki --version"
+  register: loki_installed_version
+  changed_when: false
+  failed_when: false
+  when: loki_binary.stat.exists
+
+- name: Download loki archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/loki/releases/download/v{{
+      loki_version }}/loki-linux-{{ loki_arch }}.zip
+    dest: "/tmp/loki-{{ loki_version }}.zip"
+    checksum: "sha256:{{ loki_checksum[loki_arch] }}"
+    mode: "0644"
+  when: >
+    not loki_binary.stat.exists or
+    loki_version not in (loki_installed_version.stdout | default(''))
+
+- name: Extract loki binary
+  ansible.builtin.unarchive:
+    src: "/tmp/loki-{{ loki_version }}.zip"
+    dest: "/tmp"
+    remote_src: true
+  when: >
+    not loki_binary.stat.exists or
+    loki_version not in (loki_installed_version.stdout | default(''))
+
+- name: Install loki binary
+  ansible.builtin.copy:
+    src: "/tmp/loki-linux-{{ loki_arch }}"
+    dest: "{{ loki_install_dir }}/loki"
+    owner: "{{ loki_user }}"
+    group: "{{ loki_group }}"
+    mode: "0755"
+    remote_src: true
+  notify: restart loki
+  when: >
+    not loki_binary.stat.exists or
+    loki_version not in (loki_installed_version.stdout | default(''))
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/loki-{{ loki_version }}.zip"
+    state: absent
+
+- name: Clean up extracted binary
+  ansible.builtin.file:
+    path: "/tmp/loki-linux-{{ loki_arch }}"
+    state: absent

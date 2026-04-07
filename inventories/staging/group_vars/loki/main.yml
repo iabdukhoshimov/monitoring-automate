@@ -1,0 +1,10 @@
+---
+loki_version: "3.0.0"
+loki_port: 3100
+# SHA256 checksums — get from: https://github.com/grafana/loki/releases
+loki_checksum:
+  amd64: ""
+  arm64: ""
+
+loki_retention_period: "14d"
+loki_alertmanager_url: "http://{{ groups['alertmanager'][0] }}:9093"

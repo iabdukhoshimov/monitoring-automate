@@ -1,0 +1,18 @@
+---
+promtail_version: "3.0.0"
+# SHA256 checksums — get from: https://github.com/grafana/loki/releases
+promtail_checksum:
+  amd64: ""
+  arm64: ""
+
+promtail_loki_url: "http://{{ hostvars[groups['loki'][0]]['ansible_host'] }}:{{ loki_port }}/loki/api/v1/push"
+
+promtail_scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: "{{ ansible_hostname }}"
+          __path__: /var/log/*.log

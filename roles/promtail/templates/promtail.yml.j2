@@ -1,0 +1,14 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+server:
+  http_listen_port: {{ promtail_http_port }}
+  grpc_listen_port: 0
+
+positions:
+  filename: {{ promtail_positions_dir }}/positions.yaml
+
+clients:
+  - url: {{ promtail_loki_url }}
+
+scrape_configs:
+{{ promtail_scrape_configs | to_nice_yaml(indent=2) | indent(2) }}

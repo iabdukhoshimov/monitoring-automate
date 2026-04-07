@@ -1,0 +1,9 @@
+---
+- name: Deploy promtail configuration
+  ansible.builtin.template:
+    src: promtail.yml.j2
+    dest: "{{ promtail_config_dir }}/promtail.yml"
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: "0640"
+  notify: restart promtail

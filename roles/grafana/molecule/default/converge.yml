@@ -13,9 +13,7 @@
     grafana_domain: "localhost"
     prometheus_port: 9090
     prometheus_scrape_interval: "15s"
-    elasticsearch_url: "http://localhost:9200"
-    elasticsearch_index: "logs-*"
-    elasticsearch_time_field: "@timestamp"
+    loki_port: 3100
     # Simple datasource pointing to localhost — groups['prometheus'][0] resolves
     # to this instance since it is in the prometheus group in molecule.yml
     grafana_datasources:

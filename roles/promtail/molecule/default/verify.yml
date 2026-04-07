@@ -1,0 +1,40 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check promtail binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/promtail
+      register: promtail_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: promtail_binary.stat.exists and promtail_binary.stat.executable
+        fail_msg: "promtail binary not found or not executable"
+
+    - name: Check config file exists
+      ansible.builtin.stat:
+        path: /etc/promtail/promtail.yml
+      register: promtail_config_file
+
+    - name: Assert config file is present
+      ansible.builtin.assert:
+        that: promtail_config_file.stat.exists
+        fail_msg: "promtail.yml config not found"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert promtail service is running
+      ansible.builtin.assert:
+        that:
+          - "'promtail.service' in ansible_facts.services"
+          - "ansible_facts.services['promtail.service'].state == 'running'"
+        fail_msg: "promtail service is not running"
+
+    - name: Assert promtail port is listening
+      ansible.builtin.wait_for:
+        port: 9080
+        timeout: 30

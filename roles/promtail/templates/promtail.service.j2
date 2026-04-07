@@ -1,0 +1,19 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+[Unit]
+Description=Promtail Log Shipping Agent
+Documentation=https://grafana.com/docs/loki/latest/send-data/promtail/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ promtail_user }}
+Group={{ promtail_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart={{ promtail_install_dir }}/promtail \
+  -config.file={{ promtail_config_dir }}/promtail.yml
+
+[Install]
+WantedBy=multi-user.target

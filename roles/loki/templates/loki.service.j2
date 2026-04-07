@@ -1,0 +1,19 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+[Unit]
+Description=Loki Log Aggregation System
+Documentation=https://grafana.com/docs/loki/latest/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ loki_user }}
+Group={{ loki_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+ExecStart={{ loki_install_dir }}/loki \
+  -config.file={{ loki_config_dir }}/loki.yml
+
+[Install]
+WantedBy=multi-user.target

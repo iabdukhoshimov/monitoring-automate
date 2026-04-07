@@ -1,0 +1,96 @@
+---
+- name: Assert promtail_checksum is set
+  ansible.builtin.assert:
+    that: promtail_checksum | length > 0
+    fail_msg: >-
+      promtail_checksum must be set in group_vars/promtail/main.yml.
+      Get the SHA256 from https://github.com/grafana/loki/releases
+
+- name: Set download architecture
+  ansible.builtin.set_fact:
+    promtail_arch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Create promtail system group
+  ansible.builtin.group:
+    name: "{{ promtail_group }}"
+    system: true
+    state: present
+
+- name: Create promtail system user
+  ansible.builtin.user:
+    name: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+    groups: adm
+    append: true
+
+- name: Create promtail directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: "0755"
+  loop:
+    - "{{ promtail_config_dir }}"
+    - "{{ promtail_positions_dir }}"
+
+- name: Check if promtail binary exists
+  ansible.builtin.stat:
+    path: "{{ promtail_install_dir }}/promtail"
+  register: promtail_binary
+
+- name: Check installed promtail version
+  ansible.builtin.command:
+    cmd: "{{ promtail_install_dir }}/promtail --version"
+  register: promtail_installed_version
+  changed_when: false
+  failed_when: false
+  when: promtail_binary.stat.exists
+
+- name: Download promtail archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/loki/releases/download/v{{
+      promtail_version }}/promtail-linux-{{ promtail_arch }}.zip
+    dest: "/tmp/promtail-{{ promtail_version }}.zip"
+    checksum: "sha256:{{ promtail_checksum[promtail_arch] }}"
+    mode: "0644"
+  when: >
+    not promtail_binary.stat.exists or
+    promtail_version not in (promtail_installed_version.stdout | default(''))
+
+- name: Extract promtail binary
+  ansible.builtin.unarchive:
+    src: "/tmp/promtail-{{ promtail_version }}.zip"
+    dest: "/tmp"
+    remote_src: true
+  when: >
+    not promtail_binary.stat.exists or
+    promtail_version not in (promtail_installed_version.stdout | default(''))
+
+- name: Install promtail binary
+  ansible.builtin.copy:
+    src: "/tmp/promtail-linux-{{ promtail_arch }}"
+    dest: "{{ promtail_install_dir }}/promtail"
+    owner: "{{ promtail_user }}"
+    group: "{{ promtail_group }}"
+    mode: "0755"
+    remote_src: true
+  notify: restart promtail
+  when: >
+    not promtail_binary.stat.exists or
+    promtail_version not in (promtail_installed_version.stdout | default(''))
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/promtail-{{ promtail_version }}.zip"
+    state: absent
+
+- name: Clean up extracted binary
+  ansible.builtin.file:
+    path: "/tmp/promtail-linux-{{ promtail_arch }}"
+    state: absent

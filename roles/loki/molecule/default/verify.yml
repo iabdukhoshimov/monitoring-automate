@@ -1,0 +1,49 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check loki binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/loki
+      register: loki_binary
+
+    - name: Assert binary is installed
+      ansible.builtin.assert:
+        that: loki_binary.stat.exists and loki_binary.stat.executable
+        fail_msg: "loki binary not found or not executable"
+
+    - name: Check config file exists
+      ansible.builtin.stat:
+        path: /etc/loki/loki.yml
+      register: loki_config_file
+
+    - name: Assert config file is present
+      ansible.builtin.assert:
+        that: loki_config_file.stat.exists
+        fail_msg: "loki.yml config not found"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert loki service is running
+      ansible.builtin.assert:
+        that:
+          - "'loki.service' in ansible_facts.services"
+          - "ansible_facts.services['loki.service'].state == 'running'"
+        fail_msg: "loki service is not running"
+
+    - name: Assert loki port is listening
+      ansible.builtin.wait_for:
+        port: 3100
+        timeout: 30
+
+    - name: Assert loki ready endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:3100/ready"
+        status_code: 200
+      register: loki_ready
+      retries: 10
+      delay: 3
+      until: loki_ready.status == 200

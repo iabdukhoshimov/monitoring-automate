@@ -17,6 +17,14 @@ grafana_datasources:
       timeInterval: "{{ prometheus_scrape_interval }}"
       httpMethod: "POST"
 
+  - name: "Loki"
+    type: "loki"
+    access: "proxy"
+    isDefault: false
+    url: "http://{{ groups['loki'][0] }}:{{ loki_port }}"
+    jsonData:
+      maxLines: 1000
+
 grafana_dashboards:
   - name: "node-exporter-full"
     gnet_id: 1860

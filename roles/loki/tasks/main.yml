@@ -1,0 +1,16 @@
+---
+- name: Import loki install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [loki_install]
+
+- name: Import loki configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [loki_configure]
+
+- name: Import loki service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [loki_service]
+
+- name: Import loki firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [loki_firewall]

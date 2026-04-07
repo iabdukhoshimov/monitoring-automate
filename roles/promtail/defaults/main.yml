@@ -1,0 +1,28 @@
+---
+promtail_version: "3.0.0"
+promtail_http_port: 9080
+
+# system
+promtail_user: "promtail"
+promtail_group: "promtail"
+promtail_install_dir: "/usr/local/bin"
+promtail_config_dir: "/etc/promtail"
+promtail_positions_dir: "/var/lib/promtail"
+
+# Loki push URL — override in group_vars
+promtail_loki_url: "http://localhost:3100/loki/api/v1/push"
+
+# Log paths to scrape — override in group_vars to add app-specific paths
+promtail_scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: "{{ ansible_hostname }}"
+          __path__: /var/log/*.log
+
+# Checksums — must be set via group_vars; no safe defaults exist
+# Get from: https://github.com/grafana/loki/releases
+promtail_checksum: {}

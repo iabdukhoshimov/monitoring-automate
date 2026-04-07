@@ -1,0 +1,17 @@
+---
+- name: Deploy promtail systemd service
+  ansible.builtin.template:
+    src: promtail.service.j2
+    dest: /etc/systemd/system/promtail.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart promtail
+
+- name: Ensure promtail is started and enabled
+  ansible.builtin.service:
+    name: promtail
+    state: started
+    enabled: true
