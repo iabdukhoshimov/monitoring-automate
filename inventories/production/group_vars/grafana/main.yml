@@ -1,5 +1,5 @@
 ---
-grafana_version: "10.4.0"
+grafana_version: "12.4.2"
 grafana_port: 3000
 # SHA256 checksum — update when changing grafana_version
 # Get from: https://grafana.com/grafana/download?edition=oss

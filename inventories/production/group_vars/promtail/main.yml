@@ -1,5 +1,5 @@
 ---
-promtail_version: "3.0.0"
+promtail_version: "3.7.1"
 # SHA256 checksums — get from: https://github.com/grafana/loki/releases
 promtail_checksum:
   amd64: ""

@@ -6,6 +6,7 @@
     # IMPORTANT: grafana_checksum is a placeholder in group_vars.
     # Set it to the real SHA256 from https://grafana.com/grafana/download?edition=oss
     # before running molecule. Empty string skips checksum verification for CI.
+    grafana_version: "12.4.2"
     grafana_checksum: ""
     # Dummy credentials — real values live in Ansible Vault
     grafana_admin_password: "TestAdmin123!"

@@ -28,7 +28,7 @@ services:
 
   # ── Prometheus ─────────────────────────────────────────────────────────────
   prometheus:
-    image: prom/prometheus:v2.51.0
+    image: prom/prometheus:v3.11.0
     container_name: prometheus
     restart: unless-stopped
     command:
@@ -57,7 +57,7 @@ services:
 
   # ── Alertmanager ───────────────────────────────────────────────────────────
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.31.1
     container_name: alertmanager
     restart: unless-stopped
     command:
@@ -83,7 +83,7 @@ services:
 
   # ── Grafana ────────────────────────────────────────────────────────────────
   grafana:
-    image: grafana/grafana:10.4.0
+    image: grafana/grafana:12.4.2
     container_name: grafana
     restart: unless-stopped
     ports:
@@ -109,7 +109,7 @@ services:
 
   # ── Node Exporter ──────────────────────────────────────────────────────────
   node-exporter:
-    image: prom/node-exporter:v1.8.1
+    image: prom/node-exporter:v1.11.0
     container_name: node-exporter
     restart: unless-stopped
     command:
@@ -135,7 +135,7 @@ services:
 
   # ── Blackbox Exporter ──────────────────────────────────────────────────────
   blackbox-exporter:
-    image: prom/blackbox-exporter:v0.25.0
+    image: prom/blackbox-exporter:v0.28.0
     container_name: blackbox-exporter
     restart: unless-stopped
     command:
@@ -198,7 +198,7 @@ services:
 
   # ── Loki (log aggregation) ─────────────────────────────────────────────────
   loki:
-    image: grafana/loki:3.0.0
+    image: grafana/loki:3.7.1
     container_name: loki
     restart: unless-stopped
     command: -config.file=/etc/loki/loki.yml
@@ -218,7 +218,7 @@ services:
 
   # ── Promtail (log shipper → Loki) ──────────────────────────────────────────
   promtail:
-    image: grafana/promtail:3.0.0
+    image: grafana/promtail:3.7.1
     container_name: promtail
     restart: unless-stopped
     command: -config.file=/etc/promtail/promtail.yml

@@ -1,5 +1,5 @@
 ---
-grafana_version: "10.4.0"
+grafana_version: "12.4.2"
 grafana_port: 3000
 
 # system

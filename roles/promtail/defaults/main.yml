@@ -1,5 +1,5 @@
 ---
-promtail_version: "3.0.0"
+promtail_version: "3.7.1"
 promtail_http_port: 9080
 
 # system

@@ -1,5 +1,5 @@
 ---
-prometheus_version: "2.51.0"
+prometheus_version: "3.11.0"
 prometheus_port: 9090
 node_exporter_port: 9100
 prometheus_retention: "7d"
@@ -10,8 +10,8 @@ prometheus_cluster_name: "dev"
 # SHA256 checksums per architecture — update when changing prometheus_version
 # Get from: https://github.com/prometheus/prometheus/releases
 prometheus_checksum:
-  amd64: "e9b1e1b5a01f3ee37cb4abe913a6db17a61f5b1acee5e4d8f7ed9e7a50f6ff61"
-  arm64: "25d3e07e64789b2883fd32c312140ad1362199a63db646b4923fffa537cd9702"
+  amd64: "ff799c3e4c318e17dec14aaaa406a4da328fabb4578336b36d96d893870c3b76"
+  arm64: "4d983175e77161e30b94922c49fdb681cf849439613d24a026bbb8d1ca4e8728"
 
 prometheus_blackbox_http_targets:
   - "http://100.96.125.99:3000"

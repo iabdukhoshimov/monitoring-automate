@@ -1,5 +1,5 @@
 ---
-alertmanager_version: "0.27.0"
+alertmanager_version: "0.31.1"
 alertmanager_port: 9093
 
 # system
