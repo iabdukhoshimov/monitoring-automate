@@ -4,8 +4,8 @@
   become: true
   vars:
     loki_checksum:
-      amd64: ""
-      arm64: ""
+      amd64: "ef027d63a625d5b74e917b72ae832f187f151e486de15f0515d6af1d6a56aa70"
+      arm64: "7cc8c1246fa6466cbcf5c64898ba6e77f5ef20541fb156790eb20d7cd146638c"
     loki_alertmanager_url: "http://localhost:9093"
   roles:
     - role: loki

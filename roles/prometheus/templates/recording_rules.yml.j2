@@ -46,6 +46,29 @@ groups:
         expr: >
           sum by(instance) (rate(node_network_transmit_bytes_total{device!="lo"}[5m]))
 
+  - name: loki_recording_rules
+    interval: 1m
+    rules:
+
+      # Ingestion rate — lines per second across all streams
+      - record: instance:loki_ingestion_rate:rate5m
+        expr: sum by(instance) (rate(loki_distributor_lines_received_total[5m]))
+
+      # Discard rate — samples dropped (rate limit, out-of-order, etc.)
+      - record: instance:loki_discard_rate:rate5m
+        expr: sum by(instance, reason) (rate(loki_discarded_samples_total[5m]))
+
+      # Loki HTTP request error ratio per route
+      - record: instance:loki_request_error_ratio:rate5m
+        expr: >
+          sum by(instance, route) (rate(loki_request_duration_seconds_count{status_code=~"5.."}[5m]))
+          /
+          sum by(instance, route) (rate(loki_request_duration_seconds_count[5m]))
+
+      # Promtail entries sent per second
+      - record: instance:promtail_sent_rate:rate5m
+        expr: sum by(instance) (rate(promtail_sent_entries_total[5m]))
+
   - name: blackbox_recording_rules
     interval: 1m
     rules:

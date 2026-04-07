@@ -50,6 +50,8 @@ jobs:
           - prometheus
           - alertmanager
           - grafana
+          - loki
+          - promtail
       fail-fast: false  # run all roles even if one fails
 
     steps:

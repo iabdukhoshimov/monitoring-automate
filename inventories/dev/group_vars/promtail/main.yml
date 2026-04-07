@@ -1,9 +1,11 @@
 ---
-promtail_version: "3.7.1"
+promtail_version: "3.6.10"
 # SHA256 checksums — get from: https://github.com/grafana/loki/releases
+# Note: promtail binaries are not shipped in 3.7+; 3.6.10 is the latest binary release.
+# Grafana Alloy is the official long-term successor to Promtail.
 promtail_checksum:
-  amd64: ""
-  arm64: ""
+  amd64: "155a22175b11d0495483aeae81184e4ef1f004a390c06f29ccb0d3daf60f71c8"
+  arm64: "b4cad7157ec6a7906dde122964bcbf68ec3379adf141523f94152e44d9f6b39b"
 
 promtail_loki_url: "http://{{ hostvars[groups['loki'][0]]['ansible_host'] }}:{{ loki_port }}/loki/api/v1/push"
 

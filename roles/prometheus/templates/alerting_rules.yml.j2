@@ -233,6 +233,86 @@ groups:
             SSL certificate for {{ '{{' }} $labels.instance {{ '}}' }} expires in
             {{ '{{' }} $value | humanizeDuration {{ '}}' }}. Immediate renewal required.
 
+  - name: loki_health
+    rules:
+
+      - alert: LokiDown
+        expr: up{job="loki"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Loki is down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Loki has been unreachable for more than 2 minutes on
+            {{ '{{' }} $labels.instance {{ '}}' }}. Log ingestion and querying are unavailable.
+
+      - alert: PromtailDown
+        expr: up{job="promtail"} == 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promtail is down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Promtail has been unreachable for more than 2 minutes on
+            {{ '{{' }} $labels.instance {{ '}}' }}. Log shipping to Loki has stopped.
+
+      # Loki ingestion errors — logs are being dropped
+      - alert: LokiIngestionErrors
+        expr: rate(loki_discarded_samples_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki discarding log samples on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Loki is discarding {{ '{{' }} $value | printf "%.2f" {{ '}}' }} samples/s on
+            {{ '{{' }} $labels.instance {{ '}}' }} (reason={{ '{{' }} $labels.reason {{ '}}' }}).
+            Logs are being lost.
+
+      # Promtail sending errors — can't reach Loki
+      - alert: PromtailSendErrors
+        expr: rate(promtail_sent_entries_total[5m]) == 0 and rate(promtail_read_lines_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Promtail not sending logs on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Promtail on {{ '{{' }} $labels.instance {{ '}}' }} is reading log lines
+            but not sending them to Loki. Check connectivity to Loki.
+
+      # Loki storage approaching retention — compactor may be falling behind
+      - alert: LokiStorageWriteFailures
+        expr: rate(loki_chunk_store_index_entries_per_chunk_sum[5m]) == 0
+          and on(instance) up{job="loki"} == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki not writing chunks on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Loki on {{ '{{' }} $labels.instance {{ '}}' }} appears to have stopped
+            writing storage chunks. Check disk space and compactor status.
+
+      # Request errors from Loki HTTP API
+      - alert: LokiRequestErrors
+        expr: >
+          sum by(instance, route) (rate(loki_request_duration_seconds_count{status_code=~"5.."}[5m]))
+          /
+          sum by(instance, route) (rate(loki_request_duration_seconds_count[5m]))
+          > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Loki high error rate on {{ '{{' }} $labels.instance {{ '}}' }}"
+          description: >-
+            Loki on {{ '{{' }} $labels.instance {{ '}}' }} is returning
+            {{ '{{' }} $value | humanizePercentage {{ '}}' }} 5xx errors on route
+            {{ '{{' }} $labels.route {{ '}}' }}.
+
   - name: prometheus_health
     rules:
 

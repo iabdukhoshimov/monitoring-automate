@@ -98,6 +98,26 @@ scrape_configs:
         replacement: "{{ hostvars[groups['blackbox_exporter'][0]]['ansible_host'] }}:{{ blackbox_exporter_port }}"
 {% endif %}
 
+{% if groups['loki'] is defined and groups['loki'] | length > 0 %}
+  # Loki self-monitoring
+  - job_name: "loki"
+    static_configs:
+      - targets:
+{% for host in groups['loki'] %}
+          - "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ loki_port | default(3100) }}"
+{% endfor %}
+
+{% endif %}
+{% if groups['promtail'] is defined and groups['promtail'] | length > 0 %}
+  # Promtail self-monitoring
+  - job_name: "promtail"
+    static_configs:
+      - targets:
+{% for host in groups['promtail'] %}
+          - "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ promtail_http_port | default(9080) }}"
+{% endfor %}
+
+{% endif %}
 {% if prometheus_blackbox_icmp_targets %}
   # ICMP ping probing via blackbox_exporter
   - job_name: "blackbox_icmp"
