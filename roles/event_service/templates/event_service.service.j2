@@ -1,0 +1,19 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+[Unit]
+Description=Monitoring Event Service (Alertmanager → Kafka bridge)
+Documentation=https://github.com/iabdukhoshimov/monitoring-event-service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ event_service_user }}
+Group={{ event_service_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+EnvironmentFile={{ event_service_config_dir }}/event_service.env
+ExecStart={{ event_service_install_dir }}/event_service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+---
+- name: Import event_service build tasks
+  ansible.builtin.import_tasks: build.yml
+  tags: [event_service_build]
+
+- name: Import event_service install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [event_service_install]
+
+- name: Import event_service configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [event_service_configure]
+
+- name: Import event_service service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [event_service_service]
+
+- name: Import event_service firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [event_service_firewall]

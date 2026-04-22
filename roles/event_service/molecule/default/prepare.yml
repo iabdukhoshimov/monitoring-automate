@@ -1,0 +1,100 @@
+---
+# Set up firewall tools on the molecule containers (mirrors other role tests).
+- name: Prepare molecule containers
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install and start firewalld (RedHat)
+      when: ansible_os_family == "RedHat"
+      block:
+        - name: Install firewalld
+          ansible.builtin.package:
+            name: firewalld
+            state: present
+        - name: Start firewalld
+          ansible.builtin.service:
+            name: firewalld
+            state: started
+            enabled: true
+
+    - name: Install ufw (Debian)
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+        update_cache: true
+      when: ansible_os_family == "Debian"
+
+# Build a minimal mock event-service binary on the control machine.
+# This avoids needing the real source repo during molecule runs while still
+# exercising the full deploy path (build → copy → service → health check).
+- name: Build mock event-service binary on control machine
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Set target architecture for mock build
+      ansible.builtin.set_fact:
+        event_service_goarch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+    - name: Create mock source directory on control machine
+      ansible.builtin.file:
+        path: /tmp/event-service-mock
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Write mock main.go
+      ansible.builtin.copy:
+        dest: /tmp/event-service-mock/main.go
+        mode: "0644"
+        content: |
+          package main
+
+          import (
+            "fmt"
+            "net/http"
+            "os"
+          )
+
+          func main() {
+            port := os.Getenv("EVENT_SERVICE_PORT")
+            if port == "" {
+              port = "8080"
+            }
+            http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+              w.Header().Set("Content-Type", "application/json")
+              fmt.Fprint(w, `{"status":"ok"}`)
+            })
+            http.HandleFunc("/webhook", func(w http.ResponseWriter, r *http.Request) {
+              w.WriteHeader(http.StatusOK)
+            })
+            if err := http.ListenAndServe(":"+port, nil); err != nil {
+              os.Exit(1)
+            }
+          }
+      delegate_to: localhost
+      run_once: true
+
+    - name: Initialise Go module for mock
+      ansible.builtin.command:
+        cmd: go mod init event-service
+        chdir: /tmp/event-service-mock
+        creates: /tmp/event-service-mock/go.mod
+      delegate_to: localhost
+      run_once: true
+
+    - name: Build mock binary (cross-compiled for target arch)
+      ansible.builtin.command:
+        cmd: >-
+          go build
+          -o /tmp/event_service_1.0.0_linux_{{ event_service_goarch }}
+          .
+        chdir: /tmp/event-service-mock
+        creates: /tmp/event_service_1.0.0_linux_{{ event_service_goarch }}
+      environment:
+        GOOS: linux
+        GOARCH: "{{ event_service_goarch }}"
+        CGO_ENABLED: "0"
+      delegate_to: localhost
+      run_once: true

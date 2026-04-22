@@ -1,0 +1,23 @@
+---
+event_service_version: "1.0.0"
+event_service_port: 8080
+event_service_user: "event_service"
+event_service_group: "event_service"
+event_service_install_dir: "/usr/local/bin"
+event_service_config_dir: "/etc/event_service"
+
+# Path to the cloned source repo on the Ansible control machine.
+# The role cross-compiles Go there — no internet needed on the target host.
+# Override via group_vars or the EVENT_SERVICE_SRC env var.
+event_service_src_dir: "{{ lookup('env', 'EVENT_SERVICE_SRC') | default(playbook_dir + '/../../monitoring-event-service', true) }}"
+
+# Main Go package path relative to event_service_src_dir.
+event_service_main_pkg: "./cmd/server/"
+
+# Kafka settings — must be overridden per environment in group_vars
+event_service_kafka_brokers: "localhost:9092"
+event_service_kafka_topic: "monitoring.alerts"
+event_service_kafka_required_acks: "all"
+event_service_kafka_async: "false"
+
+event_service_log_level: "info"

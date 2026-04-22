@@ -1,0 +1,52 @@
+---
+# Compiles the event-service binary on the Ansible control machine and
+# caches it at /tmp/event_service_<version>_linux_<arch>.
+# The target host never needs internet or a Go toolchain.
+
+- name: Assert event_service_src_dir exists on control machine
+  ansible.builtin.stat:
+    path: "{{ event_service_src_dir }}"
+  delegate_to: localhost
+  run_once: true
+  register: event_service_src_stat
+
+- name: Fail if source directory is missing
+  ansible.builtin.fail:
+    msg: >-
+      event_service_src_dir='{{ event_service_src_dir }}' does not exist on
+      the control machine. Clone git@github.com:iabdukhoshimov/monitoring-event-service.git
+      there, or set EVENT_SERVICE_SRC=/path/to/source before running the playbook.
+  when: not event_service_src_stat.stat.exists
+  run_once: true
+
+- name: Set target architecture
+  ansible.builtin.set_fact:
+    event_service_goarch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Set built binary path on control machine
+  ansible.builtin.set_fact:
+    event_service_built_binary: "/tmp/event_service_{{ event_service_version }}_linux_{{ event_service_goarch }}"
+
+- name: Check if binary is already compiled for this version and arch
+  ansible.builtin.stat:
+    path: "{{ event_service_built_binary }}"
+  delegate_to: localhost
+  run_once: true
+  register: event_service_cached_binary
+
+- name: Cross-compile event-service binary on control machine
+  ansible.builtin.command:
+    cmd: >-
+      go build
+      -ldflags "-s -w"
+      -o {{ event_service_built_binary }}
+      {{ event_service_main_pkg }}
+    chdir: "{{ event_service_src_dir }}"
+  environment:
+    GOOS: linux
+    GOARCH: "{{ event_service_goarch }}"
+    CGO_ENABLED: "0"
+  delegate_to: localhost
+  run_once: true
+  when: not event_service_cached_binary.stat.exists
+  changed_when: true

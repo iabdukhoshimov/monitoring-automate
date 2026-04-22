@@ -1,0 +1,11 @@
+---
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+- name: Restart event_service
+  ansible.builtin.service:
+    name: event_service
+    state: restarted
+  listen: restart event_service

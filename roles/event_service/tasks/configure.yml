@@ -1,0 +1,9 @@
+---
+- name: Deploy event_service environment file
+  ansible.builtin.template:
+    src: event_service.env.j2
+    dest: "{{ event_service_config_dir }}/event_service.env"
+    owner: "{{ event_service_user }}"
+    group: "{{ event_service_group }}"
+    mode: "0640"
+  notify: restart event_service

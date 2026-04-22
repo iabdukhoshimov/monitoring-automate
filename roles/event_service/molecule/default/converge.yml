@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Point at the mock source dir — binary is already compiled by prepare.yml
+    # so build.yml will find the cached binary and skip the go build step.
+    event_service_src_dir: /tmp/event-service-mock
+    event_service_kafka_brokers: "localhost:9092"
+    event_service_kafka_topic: "monitoring.alerts.test"
+  roles:
+    - role: event_service

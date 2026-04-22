@@ -1,0 +1,61 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Check event_service binary exists
+      ansible.builtin.stat:
+        path: /usr/local/bin/event_service
+      register: event_service_binary
+
+    - name: Assert binary is installed and executable
+      ansible.builtin.assert:
+        that:
+          - event_service_binary.stat.exists
+          - event_service_binary.stat.executable
+        fail_msg: "event_service binary not found or not executable"
+
+    - name: Check version file exists
+      ansible.builtin.stat:
+        path: /etc/event_service/version
+      register: event_service_version_file
+
+    - name: Assert version file is present
+      ansible.builtin.assert:
+        that: event_service_version_file.stat.exists
+        fail_msg: "/etc/event_service/version not found"
+
+    - name: Check environment file exists
+      ansible.builtin.stat:
+        path: /etc/event_service/event_service.env
+      register: event_service_env_file
+
+    - name: Assert environment file is present
+      ansible.builtin.assert:
+        that: event_service_env_file.stat.exists
+        fail_msg: "event_service.env not found"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert event_service service is running
+      ansible.builtin.assert:
+        that:
+          - "'event_service.service' in ansible_facts.services"
+          - "ansible_facts.services['event_service.service'].state == 'running'"
+        fail_msg: "event_service service is not running"
+
+    - name: Assert event_service port is listening
+      ansible.builtin.wait_for:
+        port: 8080
+        timeout: 30
+
+    - name: Assert health endpoint responds
+      ansible.builtin.uri:
+        url: "http://localhost:8080/health"
+        status_code: 200
+      register: event_service_health
+      retries: 5
+      delay: 3
+      until: event_service_health.status == 200

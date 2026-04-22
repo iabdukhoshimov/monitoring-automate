@@ -1,0 +1,52 @@
+---
+- name: Create event_service system group
+  ansible.builtin.group:
+    name: "{{ event_service_group }}"
+    system: true
+    state: present
+
+- name: Create event_service system user
+  ansible.builtin.user:
+    name: "{{ event_service_user }}"
+    group: "{{ event_service_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+- name: Create event_service config directory
+  ansible.builtin.file:
+    path: "{{ event_service_config_dir }}"
+    state: directory
+    owner: "{{ event_service_user }}"
+    group: "{{ event_service_group }}"
+    mode: "0755"
+
+- name: Read installed version file
+  ansible.builtin.slurp:
+    src: "{{ event_service_config_dir }}/version"
+  register: event_service_installed_version
+  failed_when: false
+
+- name: Copy event-service binary to host
+  ansible.builtin.copy:
+    src: "{{ event_service_built_binary }}"
+    dest: "{{ event_service_install_dir }}/event_service"
+    owner: "{{ event_service_user }}"
+    group: "{{ event_service_group }}"
+    mode: "0755"
+  notify: restart event_service
+  when: >
+    event_service_installed_version.failed or
+    (event_service_installed_version.content | b64decode | trim) != event_service_version
+
+- name: Record deployed version
+  ansible.builtin.copy:
+    content: "{{ event_service_version }}"
+    dest: "{{ event_service_config_dir }}/version"
+    owner: "{{ event_service_user }}"
+    group: "{{ event_service_group }}"
+    mode: "0644"
+  when: >
+    event_service_installed_version.failed or
+    (event_service_installed_version.content | b64decode | trim) != event_service_version

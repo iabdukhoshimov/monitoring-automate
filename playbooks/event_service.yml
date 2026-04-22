@@ -1,0 +1,6 @@
+---
+- name: Deploy Event Service
+  hosts: event_service
+  become: true
+  roles:
+    - role: event_service

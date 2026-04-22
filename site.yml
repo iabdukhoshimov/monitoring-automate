@@ -8,6 +8,9 @@
 - name: Deploy blackbox_exporter
   import_playbook: playbooks/blackbox_exporter.yml
 
+- name: Deploy Event Service
+  import_playbook: playbooks/event_service.yml
+
 - name: Deploy Prometheus
   import_playbook: playbooks/prometheus.yml
 
