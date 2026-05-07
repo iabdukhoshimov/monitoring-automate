@@ -1,0 +1,37 @@
+services:
+  sample-app:
+    build: .
+    container_name: sample-app
+    ports:
+      - "9000:9000"
+    volumes:
+      - app-logs:/var/log/sample-app
+
+  promtail:
+    image: grafana/promtail:3.6.10
+    container_name: sample-promtail
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - app-logs:/var/log/sample-app:ro
+    depends_on:
+      - loki
+      - sample-app
+
+  loki:
+    image: grafana/loki:3.7.1
+    container_name: sample-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: sample-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+volumes:
+  app-logs:

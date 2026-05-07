@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: sample-app
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - sample-app:9000
+        labels:
+          service: sample-app
+          env: dev
