@@ -108,13 +108,13 @@ scrape_configs:
 {% endfor %}
 
 {% endif %}
-{% if groups['promtail'] is defined and groups['promtail'] | length > 0 %}
-  # Promtail self-monitoring
-  - job_name: "promtail"
+{% if groups['alloy'] is defined and groups['alloy'] | length > 0 %}
+  # Alloy self-monitoring
+  - job_name: "alloy"
     static_configs:
       - targets:
-{% for host in groups['promtail'] %}
-          - "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ promtail_http_port | default(9080) }}"
+{% for host in groups['alloy'] %}
+          - "{{ hostvars[host]['ansible_host'] | default(host) }}:{{ alloy_http_port | default(12345) }}"
 {% endfor %}
 
 {% endif %}

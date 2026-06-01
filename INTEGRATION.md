@@ -24,7 +24,7 @@ This document is for service owners outside the platform team. If you operate th
 | Signal  | Component       | Transport            | Mode  | Status     |
 | ------- | --------------- | -------------------- | ----- | ---------- |
 | Metrics | Prometheus      | HTTP `/metrics`      | pull  | ✅ live    |
-| Logs    | Loki + Promtail | `/loki/api/v1/push`  | push  | ✅ live    |
+| Logs    | Loki + Alloy    | `/loki/api/v1/push`  | push  | ✅ live    |
 | Alerts  | Alertmanager    | rules → event-svc    | event | ✅ live    |
 | Alerts (direct) | event-service `/webhook` | Alertmanager v4 JSON | push | ✅ live |
 | Traces  | _Tempo (planned)_ | OTLP gRPC/HTTP     | push  | ⏳ roadmap |
@@ -79,34 +79,36 @@ Open a PR to `roles/prometheus/templates/alerting_rules.yml.j2` with a new group
 
 Two supported paths. Pick whichever fits your deployment.
 
-### Option A — Promtail tails files (recommended for VMs / bare metal)
+### Option A — Grafana Alloy ships container or file logs (recommended for VMs / bare metal)
 
-Run Promtail next to your service. It tails log files and pushes to Loki.
+Run Grafana Alloy next to your service. Alloy is the supported successor to Promtail (which is EOL as of March 2026). It either tails files or discovers Docker container logs and pushes to Loki.
 
-If your service writes JSON or structured lines to `/var/log/myservice/*.log`, ask the platform team to add a scrape config in `inventories/<env>/group_vars/promtail/main.yml`:
+**Containerised service** (default): your service runs as a Docker container on a
+host in the `[alloy]` inventory group. Alloy auto-discovers it via the Docker
+socket. The container's `service_name` label (set automatically from the
+`com.docker.compose.service` label) becomes a Loki stream label.
+
+**File-based service**: ask the platform team to add the host to `[alloy]` and
+override the log source in that host's group_vars (or inventory host_vars):
 
 ```yaml
-promtail_scrape_configs:
-  - job_name: my-service
-    static_configs:
-      - targets: [localhost]
-        labels:
-          job: my-service
-          env: production
-          host: "{{ ansible_hostname }}"
-          __path__: /var/log/myservice/*.log
-    pipeline_stages:
-      - json:
-          expressions:
-            level: level
-            request_id: request_id
-      - labels:
-          level:
+# inventories/<env>/group_vars/alloy/main.yml  (or host_vars/<host>.yml)
+alloy_log_source: file
+alloy_file_paths:
+  - /var/log/myservice/*.log
+alloy_external_labels:
+  service: my-service
+  env: production
 ```
+
+For structured pipelines (JSON parsing, label extraction), extend the
+`loki.process` block in `roles/alloy/templates/config.alloy.j2` with `stage.json`
+and `stage.labels` blocks — the Alloy component reference is at
+`https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/`.
 
 ### Option B — Push directly via HTTP (recommended for containers / serverless)
 
-For services where you can't run Promtail next to them (Lambda, Cloud Run, sidecar-less containers), push directly to Loki's HTTP API:
+For services where you can't run Alloy next to them (Lambda, Cloud Run, sidecar-less containers), push directly to Loki's HTTP API:
 
 ```
 POST http://loki.internal:3100/loki/api/v1/push
@@ -237,7 +239,7 @@ If you need traces sooner, open an issue / talk to the platform team — adding 
 A minimal, runnable example demonstrating metrics + logs + a manual alert push lives in [`examples/sample-service/`](examples/sample-service/). Spin it up with `docker compose up` and you'll have:
 
 - a Python service emitting Prometheus metrics on `:9000/metrics`
-- structured JSON logs tailed by Promtail and pushed to Loki
+- structured JSON logs tailed by Alloy and pushed to Loki
 - a `send-alert.sh` script demonstrating the direct webhook path
 
 See [`examples/sample-service/README.md`](examples/sample-service/README.md).
@@ -247,7 +249,7 @@ See [`examples/sample-service/README.md`](examples/sample-service/README.md).
 ## Checklist for onboarding a new service
 
 - [ ] Metrics endpoint at `/metrics` exposed and scraped (`prometheus_extra_scrape_configs`)
-- [ ] Logs structured (JSON preferred), shipped to Loki via Promtail or direct push
+- [ ] Logs structured (JSON preferred), shipped to Loki via Alloy or direct push
 - [ ] Stream labels kept low-cardinality (`service`, `env`, `level`)
 - [ ] At least one Prometheus alert rule for the service (covers SLO breach or hard error rate)
 - [ ] Grafana dashboard for the service (start by cloning Node Exporter Full's structure)

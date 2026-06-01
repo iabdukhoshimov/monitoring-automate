@@ -6,7 +6,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: promtail-rocky9
+  - name: alloy-rocky9
     image: geerlingguy/docker-rockylinux9-ansible:latest
     pre_build_image: true
     privileged: true
@@ -15,10 +15,10 @@ platforms:
     cgroupns_mode: host
     command: /usr/sbin/init
     groups:
-      - promtail
+      - alloy
       - loki
       - monitoring
-  - name: promtail-ubuntu2204
+  - name: alloy-ubuntu2204
     image: geerlingguy/docker-ubuntu2204-ansible:latest
     pre_build_image: true
     privileged: true
@@ -27,7 +27,7 @@ platforms:
     cgroupns_mode: host
     command: /usr/lib/systemd/systemd
     groups:
-      - promtail
+      - alloy
       - loki
       - monitoring
 provisioner:

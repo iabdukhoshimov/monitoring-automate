@@ -1,0 +1,33 @@
+---
+alloy_version: "1.16.1"
+alloy_http_port: 12345
+
+# system
+alloy_user: "alloy"
+alloy_group: "alloy"
+alloy_install_dir: "/usr/local/bin"
+alloy_config_dir: "/etc/alloy"
+alloy_data_dir: "/var/lib/alloy"
+
+# Log source: "docker" tails container logs via the Docker engine API;
+# "file" tails files matched by alloy_file_paths.
+alloy_log_source: "docker"
+
+# Used when alloy_log_source == "file"
+alloy_file_paths:
+  - "/var/log/*.log"
+
+# Docker socket path used by discovery.docker and loki.source.docker
+alloy_docker_host: "unix:///var/run/docker.sock"
+
+# Loki push URL — override in group_vars to point at the central Loki
+alloy_loki_url: "http://localhost:3100/loki/api/v1/push"
+
+# External labels added to every stream written to Loki
+alloy_external_labels:
+  host: "{{ ansible_hostname }}"
+  env: "{{ env | default('unknown') }}"
+
+# Checksums — must be set via group_vars; no safe defaults exist
+# Get from: https://github.com/grafana/alloy/releases (SHA256SUMS asset)
+alloy_checksum: {}

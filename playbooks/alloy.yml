@@ -1,0 +1,7 @@
+---
+- name: Deploy Grafana Alloy log shipping agent
+  hosts: alloy
+  become: true
+  roles:
+    - role: alloy
+  tags: [alloy]

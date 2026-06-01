@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from flask import Flask, jsonify
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
-# LOGS — structured JSON to a file Promtail tails.
+# LOGS — structured JSON to a file Alloy tails.
 LOG_PATH = os.environ.get("APP_LOG_PATH", "/var/log/sample-app/app.log")
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 

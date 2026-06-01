@@ -1,0 +1,16 @@
+---
+- name: Import alloy install tasks
+  ansible.builtin.import_tasks: install.yml
+  tags: [alloy_install]
+
+- name: Import alloy configure tasks
+  ansible.builtin.import_tasks: configure.yml
+  tags: [alloy_configure]
+
+- name: Import alloy service tasks
+  ansible.builtin.import_tasks: service.yml
+  tags: [alloy_service]
+
+- name: Import alloy firewall tasks
+  ansible.builtin.import_tasks: firewall.yml
+  tags: [alloy_firewall]

@@ -7,12 +7,18 @@ services:
     volumes:
       - app-logs:/var/log/sample-app
 
-  promtail:
-    image: grafana/promtail:3.6.10
-    container_name: sample-promtail
-    command: -config.file=/etc/promtail/config.yml
+  alloy:
+    image: grafana/alloy:v1.16.1
+    container_name: sample-alloy
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    ports:
+      - "12345:12345"
     volumes:
-      - ./promtail-config.yml:/etc/promtail/config.yml:ro
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
       - app-logs:/var/log/sample-app:ro
     depends_on:
       - loki

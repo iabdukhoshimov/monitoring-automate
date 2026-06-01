@@ -76,16 +76,34 @@ Deploys on **Rocky Linux 9 / RHEL / CentOS** and **Ubuntu 22.04 / Debian** — x
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│  LOGS PIPELINE                                                              │
+│                                                                             │
+│   ┌──────────────┐                                                          │
+│   │   ALLOY      │  :12345 (UI / Prometheus scrape target)                  │
+│   │  (per host)  │  ── Docker socket or file globs ──┐                      │
+│   └──────────────┘                                   │                      │
+│                                                     POST /loki/api/v1/push  │
+│                                                      ▼                      │
+│   ┌──────────────────────────────────────────────────────────────┐         │
+│   │  LOKI  :3100                                                 │         │
+│   │  single-binary · filesystem store · TSDB v13 · single-tenant │         │
+│   │  retention: 7d (dev) · 14d (staging) · 30d (production)      │         │
+│   └──────────────────────────────────────────────────────────────┘         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
 │  GRAFANA  :3000                                                             │
 │                                                                             │
 │  Datasources (provisioned via API):                                         │
 │    ├── Prometheus  :9090  (default, HTTP POST)                              │
-│    └── Elasticsearch  :9200  (logs)                                        │
+│    └── Loki        :3100  (logs)                                            │
 │                                                                             │
-│  Dashboards (auto-imported by UID, skip if already present):               │
-│    ├── Node Exporter Full   #1860 rev37                                    │
-│    ├── Blackbox Exporter    #7587 rev3                                     │
-│    └── Prometheus Stats     #2    rev2                                     │
+│  Dashboards (auto-imported by UID, skip if already present):                │
+│    ├── Node Exporter Full   #1860  rev37                                    │
+│    ├── Blackbox Exporter    #7587  rev3                                     │
+│    ├── Prometheus Stats     #2     rev2                                     │
+│    └── Loki Logs            #13639 rev2                                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -95,11 +113,13 @@ Deploys on **Rocky Linux 9 / RHEL / CentOS** and **Ubuntu 22.04 / Debian** — x
 
 | Component | Version | Port | Purpose |
 |---|---|---|---|
-| Prometheus | 2.51.0 | 9090 | Metrics collection, alert rules, recording rules |
+| Prometheus | 3.11.0 | 9090 | Metrics collection, alert rules, recording rules |
 | Alertmanager | 0.27.0 | 9093 | Alert grouping and webhook forwarding to event service |
-| Grafana | 10.4.0 | 3000 | Dashboards — provisioned datasources + auto-imported |
-| Node Exporter | 1.8.1 | 9100 | Host metrics (CPU, memory, disk, network, systemd) |
+| Grafana | 12.4.2 | 3000 | Dashboards — provisioned datasources + auto-imported |
+| Node Exporter | 1.11.0 | 9100 | Host metrics (CPU, memory, disk, network, systemd) |
 | Blackbox Exporter | 0.25.0 | 9115 | HTTP/TCP/ICMP probing, SSL cert expiry checks |
+| Loki | 3.7.1 | 3100 | Log aggregation — single-binary, filesystem store, TSDB index |
+| Alloy | 1.16.1 | 12345 | Per-host log shipping agent (Promtail replacement) |
 | Event Service | 1.0.0 | 8080 | Webhook → Kafka bridge (Go service, deployed separately) |
 
 Every component runs as a dedicated non-root system user, managed by systemd, with firewall rules hardened to the minimum required ports.
@@ -120,7 +140,45 @@ Every component runs as a dedicated non-root system user, managed by systemd, wi
 - **Grafana via API** — datasources and dashboards provisioned idempotently via the HTTP API; UID-checked before import to avoid duplicates
 - **Ansible Vault** — secrets (Grafana admin password, secret key) encrypted at rest
 - **Lint clean** — passes `ansible-lint --profile production` (0 failures across 106 files)
-- **Molecule tested** — all 6 roles verified on Rocky Linux 9 + Ubuntu 22.04 in Docker
+- **Molecule tested** — all roles verified on Rocky Linux 9 + Ubuntu 22.04 in Docker
+- **Centralised logs** — Loki single-binary aggregator with TSDB v13 + filesystem store; per-host Grafana Alloy agents ship Docker container or file logs
+
+---
+
+## Logs
+
+Logs flow into Loki, then surface in Grafana under the **Loki** datasource:
+
+```
+[any host in [alloy] group]  alloy :12345  ──push──▶  [loki host] loki :3100  ──datasource──▶ grafana :3000
+```
+
+- **Source**: choose per host via `alloy_log_source: docker` (default — discovers
+  containers via the Docker socket) or `alloy_log_source: file` plus
+  `alloy_file_paths` for non-containerised workloads.
+- **Retention**: per-environment via `loki_retention_period` —
+  **7d (dev)** · **14d (staging)** · **30d (production)**. Loki's compactor
+  enforces this; configure under `inventories/<env>/group_vars/loki/main.yml`.
+- **Auth**: `auth_enabled: false` — single-tenant, internal network only. Do
+  not expose `:3100` to the public internet.
+- **Non-root**: Alloy runs as the `alloy` system user. When tailing Docker
+  container logs the user is added to the `docker` group so it can read the
+  socket — the least-privilege path that avoids running the agent as root.
+
+Verify after a deploy:
+
+```bash
+# Loki is up
+curl -fsS http://<loki-host>:3100/ready
+
+# Alloy is up and exposing metrics
+curl -fsS http://<alloy-host>:12345/-/ready
+curl -fsS http://<alloy-host>:12345/metrics | head
+
+# Sample LogQL via Grafana Explore (replace <hostname>):
+#   {host="<hostname>"}
+#   {host="<hostname>"} |~ "error|fatal"
+```
 
 ---
 
@@ -185,25 +243,31 @@ Every component runs as a dedicated non-root system user, managed by systemd, wi
 │   ├── common.yml
 │   ├── node_exporter.yml
 │   ├── blackbox_exporter.yml
+│   ├── event_service.yml
 │   ├── prometheus.yml
 │   ├── alertmanager.yml
+│   ├── loki.yml
 │   ├── grafana.yml
+│   ├── alloy.yml
 │   └── grafana_api.yml               # Datasource + dashboard provisioning via HTTP API
 ├── roles/
 │   ├── common/                       # OS prep, chrony, common packages
 │   ├── prometheus/
 │   │   └── templates/
 │   │       ├── prometheus.yml.j2
-│   │       ├── alerting_rules.yml.j2   # 25 alert rules
-│   │       └── recording_rules.yml.j2  # 9 recording rules
+│   │       ├── alerting_rules.yml.j2   # alert rules incl. loki_health group
+│   │       └── recording_rules.yml.j2  # recording rules
 │   ├── alertmanager/
 │   │   └── templates/
 │   │       └── alertmanager.yml.j2     # Single webhook receiver
 │   ├── grafana/
 │   ├── blackbox_exporter/
-│   └── node_exporter/
+│   ├── event_service/
+│   ├── node_exporter/
+│   ├── loki/                          # single-binary, filesystem store, TSDB v13
+│   └── alloy/                         # per-host log shipper (Promtail replacement)
 └── inventories/
-    ├── dev/                          # 7d retention · 30s scrape · 1 Kafka broker
+    ├── dev/                          # 7d retention · 30s scrape
     │   ├── hosts.ini
     │   └── group_vars/
     │       ├── all/          # vault.yml + main.yml (env: dev)
@@ -211,25 +275,13 @@ Every component runs as a dedicated non-root system user, managed by systemd, wi
     │       ├── alertmanager/
     │       ├── grafana/
     │       ├── blackbox_exporter/
-    │       └── event_service/
-    ├── staging/                      # 15d retention · 15s scrape · 2 Kafka brokers
-    │   ├── hosts.ini
-    │   └── group_vars/
-    │       ├── all/          # vault.yml + main.yml (env: staging)
-    │       ├── prometheus/
-    │       ├── alertmanager/
-    │       ├── grafana/
-    │       ├── blackbox_exporter/
-    │       └── event_service/
-    └── production/                   # 30d retention · 15s scrape · 3 Kafka brokers
-        ├── hosts.ini
-        └── group_vars/
-            ├── all/          # vault.yml + main.yml (env: production)
-            ├── prometheus/
-            ├── alertmanager/
-            ├── grafana/
-            ├── blackbox_exporter/
-            └── event_service/
+    │       ├── event_service/
+    │       ├── loki/
+    │       └── alloy/
+    ├── staging/                      # 14d retention · 15s scrape
+    │   └── group_vars/  (same shape as dev)
+    └── production/                   # 30d retention · 15s scrape
+        └── group_vars/  (same shape as dev)
 ```
 
 ---
@@ -339,11 +391,14 @@ ansible-playbook -i inventories/production playbooks/grafana_api.yml --ask-vault
 `site.yml` deploys in this sequence, which resolves all dependencies:
 
 ```
-common → node_exporter → blackbox_exporter → prometheus → alertmanager → grafana → grafana_api
+common → node_exporter → blackbox_exporter → event_service → prometheus →
+alertmanager → loki → grafana → alloy → grafana_api
 ```
 
-- `grafana_api.yml` runs after `grafana` — the HTTP API must be up first
-- `event_service.yml` runs last — Alertmanager must be up before the webhook target is live
+- `loki` runs before `grafana_api` — the Loki HTTP endpoint must respond before
+  the datasource is provisioned
+- `alloy` runs after `loki` — the push target must exist before agents start
+- `grafana_api` runs last — datasource and dashboard provisioning needs Grafana up
 
 ---
 
@@ -372,7 +427,7 @@ ansible-galaxy collection install -r requirements.yml
 cd roles/prometheus && molecule test
 
 # Test all roles
-for role in common node_exporter blackbox_exporter prometheus alertmanager grafana; do
+for role in common node_exporter blackbox_exporter prometheus alertmanager grafana loki alloy; do
   (cd roles/$role && molecule test)
 done
 ```
@@ -415,11 +470,12 @@ Alertmanager routing tree: `http://alertmanager-1.internal:9093/#/status`
 
 ## Roadmap
 
-- [ ] Go event service implementation (webhook receiver → Kafka producer)
+- [x] Go event service implementation (webhook receiver → Kafka producer)
+- [x] Centralised log aggregation (Loki + Alloy)
+- [x] Multi-environment inventories (dev / staging / prod)
 - [ ] TLS termination via nginx + Let's Encrypt
 - [ ] Remote write to long-term storage (Mimir or VictoriaMetrics)
 - [ ] Prometheus HA + Alertmanager clustering
-- [ ] Multi-environment inventories (dev / staging / prod)
 
 ---
 

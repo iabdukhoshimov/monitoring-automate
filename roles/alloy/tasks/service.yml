@@ -1,0 +1,17 @@
+---
+- name: Deploy alloy systemd service
+  ansible.builtin.template:
+    src: alloy.service.j2
+    dest: /etc/systemd/system/alloy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart alloy
+
+- name: Ensure alloy is started and enabled
+  ansible.builtin.service:
+    name: alloy
+    state: started
+    enabled: true

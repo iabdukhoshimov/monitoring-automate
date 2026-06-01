@@ -4,8 +4,8 @@
     daemon_reload: true
   listen: reload systemd
 
-- name: Restart promtail
+- name: Restart alloy
   ansible.builtin.service:
-    name: promtail
+    name: alloy
     state: restarted
-  listen: restart promtail
+  listen: restart alloy

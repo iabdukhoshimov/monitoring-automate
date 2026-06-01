@@ -1,0 +1,105 @@
+---
+- name: Assert alloy_checksum is set
+  ansible.builtin.assert:
+    that: alloy_checksum | length > 0
+    fail_msg: >-
+      alloy_checksum must be set in group_vars/alloy/main.yml.
+      Get the SHA256 from https://github.com/grafana/alloy/releases (SHA256SUMS asset)
+
+- name: Set download architecture
+  ansible.builtin.set_fact:
+    alloy_arch: "{{ (ansible_architecture == 'aarch64') | ternary('arm64', 'amd64') }}"
+
+- name: Create alloy system group
+  ansible.builtin.group:
+    name: "{{ alloy_group }}"
+    system: true
+    state: present
+
+- name: Create alloy system user
+  ansible.builtin.user:
+    name: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    shell: /sbin/nologin
+    system: true
+    create_home: false
+    state: present
+
+# Granting docker group membership is the least-privilege way to let a
+# non-root Alloy read container logs from /var/run/docker.sock.
+# Skipped when alloy_log_source != "docker".
+- name: Add alloy user to docker group
+  ansible.builtin.user:
+    name: "{{ alloy_user }}"
+    groups: docker
+    append: true
+  when: alloy_log_source == "docker"
+  notify: restart alloy
+
+- name: Create alloy directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0755"
+  loop:
+    - "{{ alloy_config_dir }}"
+    - "{{ alloy_data_dir }}"
+
+- name: Check if alloy binary exists
+  ansible.builtin.stat:
+    path: "{{ alloy_install_dir }}/alloy"
+  register: alloy_binary
+
+- name: Check installed alloy version
+  ansible.builtin.command:
+    cmd: "{{ alloy_install_dir }}/alloy --version"
+  register: alloy_installed_version
+  changed_when: false
+  failed_when: false
+  when: alloy_binary.stat.exists
+
+- name: Download alloy archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/grafana/alloy/releases/download/v{{
+      alloy_version }}/alloy-linux-{{ alloy_arch }}.zip
+    dest: "/tmp/alloy-{{ alloy_version }}.zip"
+    checksum: "sha256:{{ alloy_checksum[alloy_arch] }}"
+    mode: "0644"
+  when: >
+    not alloy_binary.stat.exists or
+    alloy_version not in (alloy_installed_version.stdout | default(''))
+
+- name: Extract alloy binary
+  ansible.builtin.unarchive:
+    src: "/tmp/alloy-{{ alloy_version }}.zip"
+    dest: "/tmp"
+    remote_src: true
+  when: >
+    not alloy_binary.stat.exists or
+    alloy_version not in (alloy_installed_version.stdout | default(''))
+
+- name: Install alloy binary
+  ansible.builtin.copy:
+    src: "/tmp/alloy-linux-{{ alloy_arch }}"
+    dest: "{{ alloy_install_dir }}/alloy"
+    owner: "{{ alloy_user }}"
+    group: "{{ alloy_group }}"
+    mode: "0755"
+    remote_src: true
+  notify: restart alloy
+  when: >
+    not alloy_binary.stat.exists or
+    alloy_version not in (alloy_installed_version.stdout | default(''))
+
+- name: Clean up downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/alloy-{{ alloy_version }}.zip"
+    state: absent
+
+- name: Clean up extracted binary
+  ansible.builtin.file:
+    path: "/tmp/alloy-linux-{{ alloy_arch }}"
+    state: absent

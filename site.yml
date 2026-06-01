@@ -17,14 +17,18 @@
 - name: Deploy Alertmanager
   import_playbook: playbooks/alertmanager.yml
 
-- name: Deploy Grafana
-  import_playbook: playbooks/grafana.yml
-
+# Loki must be up before Grafana provisions the Loki datasource and
+# before Alloy starts pushing logs.
 - name: Deploy Loki
   import_playbook: playbooks/loki.yml
 
-- name: Deploy Promtail
-  import_playbook: playbooks/promtail.yml
+- name: Deploy Grafana
+  import_playbook: playbooks/grafana.yml
+
+# Alloy runs after Loki (push target exists) and after Grafana (so the
+# datasource provisioning in grafana_api will resolve fresh logs).
+- name: Deploy Grafana Alloy
+  import_playbook: playbooks/alloy.yml
 
 - name: Configure Grafana via API (datasources + dashboards)
   import_playbook: playbooks/grafana_api.yml

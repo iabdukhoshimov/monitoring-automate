@@ -65,10 +65,6 @@ groups:
           /
           sum by(instance, route) (rate(loki_request_duration_seconds_count[5m]))
 
-      # Promtail entries sent per second
-      - record: instance:promtail_sent_rate:rate5m
-        expr: sum by(instance) (rate(promtail_sent_entries_total[5m]))
-
   - name: blackbox_recording_rules
     interval: 1m
     rules:

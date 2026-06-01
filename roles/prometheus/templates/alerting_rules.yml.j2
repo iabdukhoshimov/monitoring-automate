@@ -247,15 +247,15 @@ groups:
             Loki has been unreachable for more than 2 minutes on
             {{ '{{' }} $labels.instance {{ '}}' }}. Log ingestion and querying are unavailable.
 
-      - alert: PromtailDown
-        expr: up{job="promtail"} == 0
+      - alert: AlloyDown
+        expr: up{job="alloy"} == 0
         for: 2m
         labels:
           severity: warning
         annotations:
-          summary: "Promtail is down on {{ '{{' }} $labels.instance {{ '}}' }}"
+          summary: "Alloy is down on {{ '{{' }} $labels.instance {{ '}}' }}"
           description: >-
-            Promtail has been unreachable for more than 2 minutes on
+            Alloy has been unreachable for more than 2 minutes on
             {{ '{{' }} $labels.instance {{ '}}' }}. Log shipping to Loki has stopped.
 
       # Loki ingestion errors — logs are being dropped
@@ -270,18 +270,6 @@ groups:
             Loki is discarding {{ '{{' }} $value | printf "%.2f" {{ '}}' }} samples/s on
             {{ '{{' }} $labels.instance {{ '}}' }} (reason={{ '{{' }} $labels.reason {{ '}}' }}).
             Logs are being lost.
-
-      # Promtail sending errors — can't reach Loki
-      - alert: PromtailSendErrors
-        expr: rate(promtail_sent_entries_total[5m]) == 0 and rate(promtail_read_lines_total[5m]) > 0
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Promtail not sending logs on {{ '{{' }} $labels.instance {{ '}}' }}"
-          description: >-
-            Promtail on {{ '{{' }} $labels.instance {{ '}}' }} is reading log lines
-            but not sending them to Loki. Check connectivity to Loki.
 
       # Loki storage approaching retention — compactor may be falling behind
       - alert: LokiStorageWriteFailures

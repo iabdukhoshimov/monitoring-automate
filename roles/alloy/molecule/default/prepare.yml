@@ -24,7 +24,16 @@
         update_cache: true
       when: ansible_os_family == "Debian"
 
-    - name: Install unzip (required for promtail archive extraction)
+    - name: Install unzip (required for alloy archive extraction)
       ansible.builtin.package:
         name: unzip
         state: present
+
+    # The Molecule containers do not have Docker installed, so the
+    # docker-group join in the role is a no-op here. Test the "file"
+    # source path, which does not require docker.
+    - name: Ensure target log file exists for file-source test
+      ansible.builtin.copy:
+        dest: /var/log/molecule-alloy.log
+        content: "alloy molecule test line\n"
+        mode: "0644"

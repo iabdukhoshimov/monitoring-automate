@@ -1,0 +1,40 @@
+// PoC: tail the sample-app's JSON log file and ship to Loki.
+
+local.file_match "sample_app" {
+  path_targets = [
+    {__path__ = "/var/log/sample-app/*.log"},
+  ]
+}
+
+loki.source.file "sample_app" {
+  targets    = local.file_match.sample_app.targets
+  forward_to = [loki.process.sample_app.receiver]
+}
+
+loki.process "sample_app" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.json {
+    expressions = {
+      level = "level",
+      msg   = "msg",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level = "",
+    }
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    service = "sample-app",
+    env     = "dev",
+  }
+}

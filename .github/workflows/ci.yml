@@ -51,7 +51,7 @@ jobs:
           - alertmanager
           - grafana
           - loki
-          - promtail
+          - alloy
       fail-fast: false  # run all roles even if one fails
 
     steps:

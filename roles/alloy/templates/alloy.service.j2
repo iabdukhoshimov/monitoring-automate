@@ -1,0 +1,22 @@
+# This file is managed by Ansible. Manual changes will be overwritten.
+
+[Unit]
+Description=Grafana Alloy
+Documentation=https://grafana.com/docs/alloy/latest/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ alloy_user }}
+Group={{ alloy_group }}
+Type=simple
+Restart=on-failure
+RestartSec=5s
+Environment=HOSTNAME=%H
+ExecStart={{ alloy_install_dir }}/alloy run \
+  --server.http.listen-addr=0.0.0.0:{{ alloy_http_port }} \
+  --storage.path={{ alloy_data_dir }} \
+  {{ alloy_config_dir }}/config.alloy
+
+[Install]
+WantedBy=multi-user.target

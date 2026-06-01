@@ -1,0 +1,12 @@
+---
+alloy_version: "1.16.1"
+# SHA256 checksums — get from: https://github.com/grafana/alloy/releases (SHA256SUMS asset)
+alloy_checksum:
+  amd64: "68fa7b1c75dc701f5bdc5242ce043ddb52f538ede493b7e9fc73226800fbfd3b"
+  arm64: "35d6fbcbbe93e9aab102f1e9c1f853d89730f5eca75afff0b81460eed570c4a5"
+
+# Single-host dev: Alloy and Loki live on the same OrangePi.
+alloy_loki_url: "http://{{ hostvars[groups['loki'][0]]['ansible_host'] }}:{{ loki_port }}/loki/api/v1/push"
+
+# Dev runs the event_service as a Docker container — tail container logs.
+alloy_log_source: "docker"

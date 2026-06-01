@@ -1,7 +1,0 @@
----
-- name: Deploy Promtail
-  hosts: promtail
-  become: true
-  roles:
-    - role: promtail
-  tags: [promtail]
